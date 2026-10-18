@@ -24,8 +24,9 @@ const g = globalThis as unknown as { __hogayaDb?: Promise<Db> };
 
 async function openPostgres(url: string): Promise<Db> {
   const { default: postgres } = await import("postgres");
-  // Supabase's pooler (transaction mode) does not support prepared statements; keep the pool tiny on serverless.
-  const sql = postgres(url, { max: 3, prepare: false, idle_timeout: 20, connect_timeout: 15 });
+  // Use Supabase's SESSION pooler (port 5432). Its TRANSACTION pooler (port 6543) hangs when several of our multi-step
+  // transactions run at once ("there is already a transaction in progress"). Keep the pool tiny: each connection is a real one.
+  const sql = postgres(url, { max: 2, prepare: false, idle_timeout: 10, connect_timeout: 15 });
   const wrap = (s: { unsafe: (t: string, p?: never[]) => Promise<unknown> }): Queryable => ({
     query: async <T,>(text: string, params: unknown[] = []) => (await s.unsafe(text, params as never[])) as T[],
     exec: async (text: string) => { await s.unsafe(text); },

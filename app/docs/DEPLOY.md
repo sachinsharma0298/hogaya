@@ -35,7 +35,7 @@ This makes the code public. Wait for your OK before running it.
 | `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → API → Project URL | public |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API → `anon` / "publishable" key | public (safe: row-level security is on) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → `service_role` / "secret" key | **SECRET. Server only.** |
-| `DATABASE_URL` | Project Settings → Database → Connection string → **Transaction pooler** (port 6543). Replace `[YOUR-PASSWORD]` | **SECRET. Server only.** |
+| `DATABASE_URL` | Project Settings → Database → Connection string → **Session pooler** (port 5432, host ends in `pooler.supabase.com`). Replace `[YOUR-PASSWORD]`. Do NOT use the Transaction pooler (6543): it hangs with our transactions | **SECRET. Server only.** |
 
 3. **Create the tables.** On your Mac, in the `app` folder, run this ONE command (the URL goes in only for this command and is not saved anywhere):
 
