@@ -1,0 +1,132 @@
+"use client";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Loader2, MailCheck, ShieldAlert } from "lucide-react";
+import { CustomerShell, StateBox } from "@/components/brand";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useT } from "@/lib/lang";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { usePoll } from "@/lib/use-poll";
+import type { Role } from "@/lib/types";
+
+const HOME: Record<Role, string> = { customer: "/me", pro: "/pro", operator: "/operator" };
+const safeNext = (n: string | null) => (n && /^\/(?![/\\])/.test(n) ? n : "");
+
+function LoginForm() {
+  const { t } = useT();
+  const params = useSearchParams();
+  const next = safeNext(params.get("next"));
+  const cfg = usePoll<{ supabase: boolean; dev: boolean }>("/api/auth/config", 600000).data;
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState<"mail" | "google" | null>(null);
+  const [sentTo, setSentTo] = useState("");
+  const [error, setError] = useState(params.get("error") ? t("login.err.callback") : "");
+  const redirectTo = () => `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
+
+  async function sendLink(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const addr = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(addr)) return setError(t("login.err.email"));
+    setBusy("mail");
+    const { error: err } = await supabaseBrowser().auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirectTo() } });
+    setBusy(null);
+    if (err) return setError(t("login.err.send"));
+    setSentTo(addr);
+  }
+  async function google() {
+    setError("");
+    setBusy("google");
+    const { error: err } = await supabaseBrowser().auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo() } });
+    if (err) { setBusy(null); setError(t("login.err.send")); }
+  }
+
+  return (
+    <CustomerShell>
+      <h1 className="text-2xl font-bold tracking-tight">{t("login.title")}</h1>
+      <p className="mt-1 text-sm text-foreground/85">{t("login.sub")}</p>
+
+      {!cfg && <div className="mt-6"><StateBox title="…" /></div>}
+      {cfg && !cfg.supabase && !cfg.dev && <div className="mt-6"><StateBox title={t("login.notconfigured")} /></div>}
+
+      {cfg?.supabase && (sentTo ? (
+        <div className="mt-6 rounded-2xl border bg-card p-5 text-center" role="status">
+          <MailCheck className="mx-auto size-8 text-primary" />
+          <p className="mt-2 text-lg font-semibold">{t("login.sent.title")}</p>
+          <p className="mt-1 text-sm text-foreground/85">{t("login.sent.body", { email: sentTo })}</p>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          <Button type="button" disabled={busy !== null} onClick={google} className="h-12 w-full rounded-2xl text-base">
+            {busy === "google" ? <Loader2 className="size-4 animate-spin" /> : t("login.google")}
+          </Button>
+          <p className="text-center text-xs text-foreground/70">{t("login.or")}</p>
+          <form onSubmit={sendLink} noValidate className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">{t("login.email")}</Label>
+              <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" />
+            </div>
+            <Button type="submit" variant="outline" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
+              {busy === "mail" ? <Loader2 className="size-4 animate-spin" /> : t("login.magic")}
+            </Button>
+          </form>
+          <p className="text-xs text-foreground/75">{t("login.pro.note")}</p>
+        </div>
+      ))}
+      {error && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{error}</p>}
+
+      {cfg?.dev && <DevLogin next={next} />}
+    </CustomerShell>
+  );
+}
+
+/** Local development only: shown when DEV_LOGIN=1 and no real database is connected. Never present on the live site. */
+function DevLogin({ next }: { next: string }) {
+  const [role, setRole] = useState<Role>("customer");
+  const [name, setName] = useState("Test person");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState("");
+  const pros = usePoll<{ providers: { id: string; name: string }[] }>("/api/auth/dev-pros", 600000).data?.providers ?? [];
+  async function go(body: Record<string, unknown>, r: Role) {
+    const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: "123456", ...body }) });
+    if (!res.ok) return setErr(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Failed");
+    window.location.assign(next || HOME[r]);
+  }
+  return (
+    <div className="mt-8 rounded-2xl border-2 border-dashed border-primary/50 bg-accent/50 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold"><ShieldAlert className="size-4 text-primary" /> Local test login (this Mac only)</p>
+      <div className="mt-3 flex gap-1 rounded-xl border bg-card p-1 text-sm">
+        {(["customer", "pro", "operator"] as Role[]).map((r) => (
+          <button key={r} type="button" onClick={() => setRole(r)} className={`flex-1 rounded-lg px-2 py-1.5 capitalize ${role === r ? "bg-primary text-primary-foreground" : ""}`}>{r}</button>
+        ))}
+      </div>
+      {role === "customer" && (
+        <div className="mt-3 space-y-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" aria-label="Phone" />
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" aria-label="Email" />
+          <Button type="button" className="w-full" onClick={() => go({ role, name, phone, email }, role)}>Log in</Button>
+        </div>
+      )}
+      {role === "operator" && <Button type="button" className="mt-3 w-full" onClick={() => go({ role, name: "Operator" }, role)}>Log in as operator</Button>}
+      {role === "pro" && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {pros.map((p) => <button key={p.id} type="button" onClick={() => go({ role, provider_id: p.id }, role)} className="rounded-full border bg-background px-3 py-1.5 text-xs">{p.name}</button>)}
+          {pros.length === 0 && <p className="text-xs">No Pros yet. Add one in the operator console first.</p>}
+        </div>
+      )}
+      {err && <p role="alert" className="mt-2 text-sm text-destructive">{err}</p>}
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<CustomerShell><StateBox title="…" /></CustomerShell>}>
+      <LoginForm />
+    </Suspense>
+  );
+}

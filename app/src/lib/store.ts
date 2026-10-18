@@ -1,0 +1,395 @@
+// All data lives in Postgres (Supabase in production, an embedded Postgres locally). See src/lib/db.ts and supabase/migrations.
+// The shape the rest of the app uses (HogayaRequest with its calls and events inside) is rebuilt from the tables here.
+import type { Category } from "./categories";
+import { iso, jsonParam, pgArray, q, tx, type Queryable, type Row } from "./db";
+import type { CallRecord, HogayaRequest, Provider, Role, Settings, User } from "./types";
+
+// ---- simulated providers (never stored, never called) ----------------------------------------------------
+// Used only for "Demo: simulated calls" bookings. They are not people: they exist so the flow can be shown to anyone.
+const SIM: [Category, string, string, number, number, number][] = [
+  ["electrician", "ramesh", "Ramesh Kumar", 94, 96, 31], ["electrician", "suresh", "Suresh Yadav", 88, 90, 17],
+  ["plumber", "mohan", "Mohan Lal", 91, 93, 22], ["plumber", "dinesh", "Dinesh Sharma", 86, 88, 14],
+  ["ac", "rajesh", "Rajesh Verma", 93, 95, 26], ["ac", "anil", "Anil Gupta", 85, 87, 12],
+  ["pump", "harish", "Harish Chand", 90, 92, 19], ["pump", "pramod", "Pramod Singh", 84, 86, 11],
+  ["washing_machine", "sanjay", "Sanjay Mishra", 92, 94, 24], ["washing_machine", "vikas", "Vikas Tiwari", 83, 85, 9],
+  ["ro", "manoj", "Manoj Pandey", 95, 97, 33], ["ro", "deepak", "Deepak Joshi", 87, 89, 15],
+  ["fridge", "ashok", "Ashok Saini", 89, 91, 18], ["fridge", "rakesh", "Rakesh Chauhan", 82, 84, 10],
+  ["geyser", "naresh", "Naresh Kumar", 91, 93, 21], ["geyser", "satish", "Satish Rawat", 85, 87, 13],
+  ["inverter", "ajay", "Ajay Thakur", 90, 92, 20], ["inverter", "sunil", "Sunil Dubey", 81, 83, 8],
+  ["carpenter", "bablu", "Bablu Vishwakarma", 93, 95, 28], ["carpenter", "kishan", "Kishan Lal", 86, 88, 16],
+];
+const SIM_PROVIDERS: Provider[] = SIM.map(([category, key, name, reliability, on_time_pct, jobs], i) => ({
+  id: `sim-${key}`, name, category, categories: [category], phone: "", email: "", consent_ai_call: true, consent_date: "2026-10-17",
+  opt_out: false, reliability, on_time_pct, jobs, no_shows: 0, demo: true, area: "Noida, Sector 62",
+  visit_charge: ["₹100", "₹150", "₹200"][i % 3],
+}));
+export const isSimulated = (id: string) => id.startsWith("sim-");
+
+// ---- providers (Pros) ------------------------------------------------------------------------------------
+
+function providerFromRow(r: Row): Provider {
+  const categories = (r.categories as string[]) ?? [];
+  return {
+    id: r.id as string, name: r.name as string, category: r.category as Category,
+    categories: categories.length ? (categories as Category[]) : [r.category as Category],
+    area: (r.area as string) || undefined, visit_charge: (r.visit_charge as string) || undefined,
+    phone: r.phone as string, email: (r.email as string) || undefined,
+    consent_ai_call: r.consent_ai_call as boolean, consent_date: r.consent_date as string, opt_out: r.opt_out as boolean,
+    reliability: r.reliability as number, on_time_pct: r.on_time_pct as number, jobs: r.jobs as number,
+    no_shows: r.no_shows as number, demo: r.demo as boolean,
+    onboarded_by: (r.onboarded_by as string) || undefined, onboarded_at: iso(r.onboarded_at), verified: r.onboarded_at != null,
+  };
+}
+
+async function writeProvider(c: Queryable, p: Provider, insert: boolean) {
+  const cols = [p.id, p.name, p.category, pgArray(p.categories ?? [p.category]), p.area ?? "", p.visit_charge ?? "", p.phone, p.email ?? "",
+    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null];
+  if (insert) {
+    await c.query(
+      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at)
+       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz)`, cols);
+  } else {
+    await c.query(
+      `update providers set name=$2,category=$3,categories=$4::text[],area=$5,visit_charge=$6,phone=$7,email=$8,consent_ai_call=$9,consent_date=$10,opt_out=$11,
+       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz where id=$1`, cols);
+  }
+}
+
+/** Real (onboarded) Pros only: what the operator console lists. */
+export async function listProviders(): Promise<Provider[]> {
+  return (await q("select * from providers order by created_at")).map(providerFromRow);
+}
+/** Real Pros plus the simulated ones: for looking a provider up by id and for demo bookings. */
+export async function getProviders(): Promise<Provider[]> {
+  return [...(await listProviders()), ...SIM_PROVIDERS];
+}
+export const simulatedProviders = () => SIM_PROVIDERS.map((p) => ({ ...p }));
+
+export async function addProvider(p: Provider): Promise<Provider> {
+  await tx((c) => writeProvider(c, p, true));
+  return p;
+}
+
+export async function updateProvider(id: string, fn: (p: Provider) => void): Promise<Provider | undefined> {
+  const sim = SIM_PROVIDERS.find((p) => p.id === id);
+  if (sim) { const copy = { ...sim }; fn(copy); return copy; } // simulated Pros are never changed or stored
+  return tx(async (c) => {
+    const rows = await c.query("select * from providers where id=$1 for update", [id]);
+    if (!rows[0]) return undefined;
+    const p = providerFromRow(rows[0]);
+    fn(p);
+    await writeProvider(c, p, false);
+    return p;
+  });
+}
+
+// ---- requests (bookings) ---------------------------------------------------------------------------------
+
+const CTL_KEYS = ["awaiting_call", "call_approved", "skip_rest", "skipped", "customer_declined", "screen_confirm_open"] as const;
+
+const callFromRow = (r: Row): CallRecord => {
+  const c: CallRecord = { id: r.id as string, kind: r.kind as CallRecord["kind"], status: r.status as CallRecord["status"], started_at: iso(r.started_at)! };
+  if (r.provider_id) c.provider_id = r.provider_id as string;
+  if (r.provider_name) c.provider_name = r.provider_name as string;
+  if (r.ended_at) c.ended_at = iso(r.ended_at);
+  if (r.fo_conversation_id) c.fo_conversation_id = r.fo_conversation_id as string;
+  if (r.progress) c.progress = r.progress as string;
+  if (r.question) c.question = r.question as string;
+  if (r.operator_reply) c.operator_reply = r.operator_reply as string;
+  if (r.demo) c.demo = true;
+  if (r.summary_text) c.summary_text = r.summary_text as string;
+  if (r.json) c.json = r.json as CallRecord["json"];
+  if (r.meta && Object.keys(r.meta as object).length) c.meta = r.meta as CallRecord["meta"];
+  return c;
+};
+
+function requestFromRows(r: Row, calls: Row[], events: Row[]): HogayaRequest {
+  const ctl = (r.ctl ?? {}) as Record<string, unknown>;
+  const booking = r.booking ? { ...(r.booking as object), arrival_code: (r.arrival_code as string) ?? "" } : undefined;
+  const out = {
+    id: r.id, created_at: iso(r.created_at)!, category: r.category, problem: r.problem, sector: r.sector, address: (r.address as string) ?? "",
+    time_window: r.time_window, notes: r.notes ?? undefined,
+    customer: {
+      name: (r.customer_name as string) ?? "", phone: (r.customer_phone as string) ?? "", consent_ai_call: Boolean(r.customer_consent),
+      consent_at: iso(r.customer_consent_at) ?? "", user_id: (r.customer_id as string) ?? undefined,
+    },
+    state: r.state, prev_state: r.prev_state ?? undefined, flags: r.flags, notifications: r.notifications,
+    manual: r.manual || undefined, archived: r.archived || undefined, step: r.step, demo: r.demo,
+    current_provider_name: r.current_provider_name ?? undefined, matched: r.matched ?? [],
+    calls: calls.map(callFromRow),
+    customer_choice: r.customer_choice ?? undefined, not_selected: r.not_selected ?? undefined, booking,
+    events: events.map((e) => ({ at: iso(e.at)!, text: e.text as string })),
+    ...Object.fromEntries(CTL_KEYS.filter((k) => ctl[k] !== undefined).map((k) => [k, ctl[k]])),
+  };
+  return out as unknown as HogayaRequest;
+}
+
+const SELECT_REQ = `select r.*, p.customer_name, p.customer_phone, p.customer_consent, p.customer_consent_at, p.address, p.arrival_code
+  from requests r left join request_private p on p.request_id = r.id`;
+
+async function hydrate(c: Queryable, rows: Row[]): Promise<HogayaRequest[]> {
+  if (!rows.length) return [];
+  const ids = pgArray(rows.map((r) => r.id as string));
+  const calls = await c.query("select * from calls where request_id = any($1::text[]) order by seq", [ids]);
+  const events = await c.query("select * from events where request_id = any($1::text[]) order by id", [ids]);
+  const by = (list: Row[], id: string) => list.filter((x) => x.request_id === id);
+  return rows.map((r) => requestFromRows(r, by(calls, r.id as string), by(events, r.id as string)));
+}
+
+/** What gets written for a request, split by table, so we only write what changed. */
+function pack(r: HogayaRequest) {
+  const { arrival_code, ...booking } = (r.booking ?? {}) as Record<string, unknown>;
+  const ctl: Record<string, unknown> = {};
+  for (const k of CTL_KEYS) if ((r as unknown as Record<string, unknown>)[k] !== undefined) ctl[k] = (r as unknown as Record<string, unknown>)[k];
+  const req = [
+    r.id, r.created_at, r.customer.user_id ?? null, r.category, r.problem, r.sector, r.time_window, r.notes ?? null, r.state, r.prev_state ?? null,
+    r.step, r.demo, Boolean(r.manual), Boolean(r.archived), r.current_provider_name ?? null, pgArray(r.matched ?? []), pgArray(r.not_selected),
+    (r.booking?.provider_id as string | undefined) ?? null, jsonParam(r.customer_choice), r.booking ? jsonParam(booking) : null,
+    jsonParam(r.flags ?? []), jsonParam(r.notifications ?? []), jsonParam(ctl),
+  ];
+  const priv = [r.id, r.customer.name, r.customer.phone, Boolean(r.customer.consent_ai_call), r.customer.consent_at || null, r.address,
+    typeof arrival_code === "string" ? arrival_code : ""];
+  return { req, priv, calls: new Map(r.calls.map((c) => [c.id, JSON.stringify(c)])), eventCount: r.events.length };
+}
+type Packed = ReturnType<typeof pack>;
+
+const REQ_SQL = {
+  insert: `insert into requests (id,created_at,customer_id,category,problem,sector,time_window,notes,state,prev_state,step,demo,manual,archived,current_provider_name,matched,not_selected,
+    chosen_provider_id,customer_choice,booking,flags,notifications,ctl)
+    values ($1,$2::timestamptz,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::text[],$17::text[],$18,$19::jsonb,$20::jsonb,$21::jsonb,$22::jsonb,$23::jsonb)`,
+  update: `update requests set created_at=$2::timestamptz,customer_id=$3::uuid,category=$4,problem=$5,sector=$6,time_window=$7,notes=$8,state=$9,prev_state=$10,step=$11,demo=$12,manual=$13,
+    archived=$14,current_provider_name=$15,matched=$16::text[],not_selected=$17::text[],chosen_provider_id=$18,customer_choice=$19::jsonb,booking=$20::jsonb,flags=$21::jsonb,
+    notifications=$22::jsonb,ctl=$23::jsonb where id=$1`,
+};
+const PRIV_SQL = `insert into request_private (request_id,customer_name,customer_phone,customer_consent,customer_consent_at,address,arrival_code)
+  values ($1,$2,$3,$4,$5::timestamptz,$6,$7)
+  on conflict (request_id) do update set customer_name=excluded.customer_name, customer_phone=excluded.customer_phone, customer_consent=excluded.customer_consent,
+  customer_consent_at=excluded.customer_consent_at, address=excluded.address, arrival_code=excluded.arrival_code`;
+const CALL_SQL = `insert into calls (id,request_id,kind,provider_id,provider_name,status,started_at,ended_at,fo_conversation_id,progress,question,operator_reply,demo,summary_text,json,meta)
+  values ($1,$2,$3,$4,$5,$6,$7::timestamptz,$8::timestamptz,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb)
+  on conflict (id) do update set kind=excluded.kind, provider_id=excluded.provider_id, provider_name=excluded.provider_name, status=excluded.status, started_at=excluded.started_at,
+  ended_at=excluded.ended_at, fo_conversation_id=excluded.fo_conversation_id, progress=excluded.progress, question=excluded.question, operator_reply=excluded.operator_reply,
+  demo=excluded.demo, summary_text=excluded.summary_text, json=excluded.json, meta=excluded.meta`;
+
+const callParams = (rid: string, c: CallRecord) => [c.id, rid, c.kind, c.provider_id ?? null, c.provider_name ?? null, c.status, c.started_at, c.ended_at ?? null,
+  c.fo_conversation_id ?? null, c.progress ?? null, c.question ?? null, c.operator_reply ?? null, Boolean(c.demo), c.summary_text ?? null, jsonParam(c.json), JSON.stringify(c.meta ?? {})];
+
+async function saveRequest(c: Queryable, r: HogayaRequest, before: Packed | undefined) {
+  const now = pack(r);
+  if (!before) await c.query(REQ_SQL.insert, now.req);
+  else if (JSON.stringify(now.req) !== JSON.stringify(before.req)) await c.query(REQ_SQL.update, now.req);
+  if (!before || JSON.stringify(now.priv) !== JSON.stringify(before.priv)) await c.query(PRIV_SQL, now.priv);
+  for (const call of r.calls) {
+    if (before?.calls.get(call.id) === now.calls.get(call.id)) continue;
+    await c.query(CALL_SQL, callParams(r.id, call));
+  }
+  for (const e of r.events.slice(before?.eventCount ?? 0)) await c.query("insert into events (request_id, at, text) values ($1,$2::timestamptz,$3)", [r.id, e.at, e.text]);
+}
+
+export async function listRequests(opts: { customerId?: string } = {}): Promise<HogayaRequest[]> {
+  const rows = opts.customerId
+    ? await q(`${SELECT_REQ} where r.customer_id = $1::uuid order by r.created_at desc`, [opts.customerId])
+    : await q(`${SELECT_REQ} order by r.created_at desc`);
+  return tx((c) => hydrate(c, rows));
+}
+
+export async function getRequest(id: string): Promise<HogayaRequest | undefined> {
+  const rows = await q(`${SELECT_REQ} where r.id = $1`, [id]);
+  return (await tx((c) => hydrate(c, rows)))[0];
+}
+
+export async function insertRequest(r: HogayaRequest) {
+  await tx(async (c) => {
+    await saveRequest(c, r, undefined);
+    if (r.customer.consent_ai_call) {
+      // The customer's tick-box on the booking form is kept as a consent record too.
+      await c.query("insert into consents (subject_kind, subject_id, phone, consented_at, channel, recorded_by) values ('customer',$1,$2,$3::timestamptz,'booking-form','customer')",
+        [r.customer.user_id ?? last10(r.customer.phone), last10(r.customer.phone), r.customer.consent_at || r.created_at]);
+    }
+  });
+}
+
+/** Read-modify-write one request. The row is locked while we change it, so two writers never overwrite each other. */
+export async function updateRequest(id: string, fn: (r: HogayaRequest) => void): Promise<HogayaRequest | undefined> {
+  return tx(async (c) => {
+    const rows = await c.query(`${SELECT_REQ} where r.id = $1 for update of r`, [id]);
+    const r = (await hydrate(c, rows))[0];
+    if (!r) return undefined;
+    const before = pack(r);
+    fn(r);
+    await saveRequest(c, r, before);
+    return r;
+  });
+}
+
+export async function patchCall(requestId: string, callId: string, patch: Partial<CallRecord>) {
+  return updateRequest(requestId, (r) => {
+    const c = r.calls.find((x) => x.id === callId);
+    if (!c) return;
+    Object.assign(c, patch);
+    if (patch.status && ["done", "failed", "timed_out"].includes(patch.status)) c.ended_at = new Date().toISOString();
+  });
+}
+
+/** True while any live call is still running or waiting for the operator. */
+export async function hasActiveLiveCall(): Promise<boolean> {
+  return (await q("select 1 from calls where not demo and status in ('calling','waiting_summary','needs_reply') limit 1")).length > 0;
+}
+
+/** Erase all bookings and call records (operator only). Accounts, Pros, approved numbers and the Fo sign-in are kept. */
+export async function resetDemoData(): Promise<{ removedRequests: number }> {
+  return tx(async (c) => {
+    const n = (await c.query<{ n: number }>("select count(*)::int as n from requests"))[0].n;
+    await c.query("delete from requests"); // calls, events and private details go with them
+    await c.query("update settings set autopilot=false, simulate_no_reconfirm=false where id=1");
+    return { removedRequests: n };
+  });
+}
+
+// ---- settings --------------------------------------------------------------------------------------------
+
+export async function getSettings(): Promise<Settings> {
+  const r = (await q("select autopilot, simulate_no_reconfirm from settings where id=1"))[0];
+  return { autopilot: Boolean(r?.autopilot), simulate_no_reconfirm: Boolean(r?.simulate_no_reconfirm) };
+}
+export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
+  const cur = { ...(await getSettings()), ...patch };
+  await q("update settings set autopilot=$1, simulate_no_reconfirm=$2 where id=1", [cur.autopilot, cur.simulate_no_reconfirm]);
+  return cur;
+}
+
+// ---- accounts (profiles) ---------------------------------------------------------------------------------
+
+const userFromRow = (r: Row): User => ({
+  id: r.id as string, role: r.role as Role, name: r.name as string, phone: r.phone as string, email: (r.email as string) || undefined,
+  provider_id: (r.provider_id as string) || undefined, created_at: iso(r.created_at)!,
+});
+export async function findUser(id: string): Promise<User | undefined> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined;
+  const r = (await q("select * from profiles where id=$1::uuid", [id]))[0];
+  return r ? userFromRow(r) : undefined;
+}
+export async function findUserByPhone(role: Role, phone: string): Promise<User | undefined> {
+  if (phone.startsWith("dev-")) return (await listUsers()).find((u) => u.role === role && u.phone === phone); // local test accounts
+  const digits = phone.replace(/\D/g, "").slice(-10);
+  if (digits.length < 10) return undefined;
+  return (await listUsers()).find((u) => u.role === role && u.phone.replace(/\D/g, "").slice(-10) === digits);
+}
+/** Local development only: a stand-in for a Supabase Auth user, so a profile can exist without a real sign-in. */
+export async function ensureLocalAuthUser(id: string, email: string) {
+  if ((await (await import("./db")).getDb()).engine !== "pglite") throw new Error("Local login is only available on the local database.");
+  await q("insert into auth.users (id, email) values ($1::uuid, $2) on conflict (id) do nothing", [id, email]);
+}
+export async function findProviderByEmail(email: string): Promise<Provider | undefined> {
+  const r = (await q("select * from providers where lower(email)=lower($1) and email <> '' limit 1", [email]))[0];
+  return r ? providerFromRow(r) : undefined;
+}
+export async function findUserByEmail(email: string): Promise<User | undefined> {
+  const r = (await q("select * from profiles where lower(email)=lower($1) and email <> ''", [email]))[0];
+  return r ? userFromRow(r) : undefined;
+}
+export async function findUserByProvider(providerId: string): Promise<User | undefined> {
+  const r = (await q("select * from profiles where provider_id=$1", [providerId]))[0];
+  return r ? userFromRow(r) : undefined;
+}
+export async function listUsers(): Promise<User[]> {
+  return (await q("select * from profiles order by created_at")).map(userFromRow);
+}
+export async function saveUser(u: User): Promise<User> {
+  await q(
+    `insert into profiles (id, role, name, phone, email, provider_id, created_at) values ($1::uuid,$2,$3,$4,$5,$6,$7::timestamptz)
+     on conflict (id) do update set role=excluded.role, name=excluded.name, phone=excluded.phone, email=excluded.email, provider_id=excluded.provider_id`,
+    [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at]);
+  return u;
+}
+
+// ---- Fo sign-in tokens (server only) ---------------------------------------------------------------------
+
+export async function readFoAuth(): Promise<Record<string, unknown>> {
+  const data = ((await q("select data from fo_oauth where id=1"))[0]?.data as Record<string, unknown>) ?? {};
+  if (Object.keys(data).length) return data;
+  // Local convenience: carry the old file-based sign-in over once, so you do not have to sign in to Fo again on this Mac.
+  try {
+    const { default: fs } = await import("node:fs");
+    const { default: path } = await import("node:path");
+    const { DATA_DIR } = await import("./paths");
+    const old = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "fo-auth.json"), "utf8")) as Record<string, unknown>;
+    if ((await (await import("./db")).getDb()).engine === "pglite" && process.env.PGLITE_DIR !== "memory" && old.tokens) {
+      await q("update fo_oauth set data=$1::jsonb where id=1", [JSON.stringify(old)]);
+      return old;
+    }
+  } catch { /* no old file */ }
+  return data;
+}
+export async function writeFoAuth(patch: Record<string, unknown>) {
+  const cur = await readFoAuth();
+  const next = { ...cur, ...patch };
+  for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+  await q("update fo_oauth set data=$1::jsonb, updated_at=now() where id=1", [JSON.stringify(next)]);
+}
+
+// ---- approved phone numbers: the only numbers a LIVE Fo call may reach ------------------------------------
+
+export interface ApprovedNumber {
+  id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string;
+}
+/** The last 10 digits: the same person, however the number was typed (+91, spaces, 0 in front). */
+export const last10 = (raw: string) => raw.replace(/\D/g, "").slice(-10);
+
+const approvedFromRow = (r: Row): ApprovedNumber => ({
+  id: Number(r.id), phone: r.phone as string, kind: r.kind as "pro" | "customer", name: r.name as string, email: r.email as string,
+  consent_at: iso(r.consent_at)!, added_by: r.added_by as string, note: r.note as string,
+});
+export async function listApproved(): Promise<ApprovedNumber[]> {
+  return (await q("select * from approved_numbers order by created_at desc")).map(approvedFromRow);
+}
+export async function addApproved(a: { phone: string; kind: "pro" | "customer"; name: string; email?: string; consent_at?: string; added_by: string; note?: string }): Promise<ApprovedNumber> {
+  const phone = last10(a.phone);
+  const row = (await q(
+    `insert into approved_numbers (phone, kind, name, email, consent_at, added_by, note) values ($1,$2,$3,$4,coalesce(($5::date)::timestamp at time zone 'UTC', now()),$6,$7)
+     on conflict (phone) do update set kind=excluded.kind, name=excluded.name, email=excluded.email, consent_at=excluded.consent_at, added_by=excluded.added_by, note=excluded.note
+     returning *`,
+    [phone, a.kind, a.name, (a.email ?? "").toLowerCase(), a.consent_at?.slice(0, 10) ?? null, a.added_by, a.note ?? ""]))[0];
+  await q("insert into consents (subject_kind, subject_id, phone, consented_at, channel, recorded_by) values ($1,$2,$3,coalesce(($4::date)::timestamp at time zone 'UTC', now()),$5,$6)",
+    [a.kind, a.email || phone, phone, a.consent_at?.slice(0, 10) ?? null, "operator-approved-list", a.added_by]);
+  return approvedFromRow(row);
+}
+export async function removeApproved(id: number): Promise<boolean> {
+  return (await q("delete from approved_numbers where id=$1 returning id", [id])).length > 0;
+}
+export async function findApprovedCustomerByEmail(email: string): Promise<ApprovedNumber | undefined> {
+  const r = (await q("select * from approved_numbers where kind='customer' and email=lower($1) and email <> '' limit 1", [email]))[0];
+  return r ? approvedFromRow(r) : undefined;
+}
+/** Is this phone on the approved list for this kind? For customers the account email must match too. */
+export async function isApproved(kind: "pro" | "customer", phone: string, email?: string): Promise<boolean> {
+  const digits = last10(phone);
+  if (digits.length < 10) return false;
+  const r = (await q("select email from approved_numbers where phone=$1 and kind=$2", [digits, kind]))[0];
+  if (!r) return false;
+  return kind === "pro" || !r.email || (email ?? "").toLowerCase() === r.email;
+}
+
+// ---- rate limits -----------------------------------------------------------------------------------------
+
+/** How many bookings this customer made in the last 24 hours (and how many everyone made). */
+export async function requestCounts(customerId?: string): Promise<{ mine: number; all: number }> {
+  const r = (await q(
+    "select count(*) filter (where customer_id = $1::uuid)::int as mine, count(*)::int as all from requests where created_at > now() - interval '24 hours'",
+    [customerId ?? null]))[0];
+  return { mine: Number(r?.mine ?? 0), all: Number(r?.all ?? 0) };
+}
+
+// ---- tick locks --------------------------------------------------------------------------------------------
+
+/** Take the booking's lock for a short while. False if another tick already holds it. The lock expires by itself. */
+export async function lockRequest(id: string, seconds = 60): Promise<boolean> {
+  return (await q("update requests set lock_until = now() + ($2::int * interval '1 second') where id=$1 and (lock_until is null or lock_until < now()) returning id", [id, seconds])).length > 0;
+}
+export async function unlockRequest(id: string) {
+  await q("update requests set lock_until = null where id=$1", [id]);
+}
+/** Bookings a tick may need to look at, oldest first (that order is also the queue for the one live-call line). */
+export async function listTickIds(): Promise<string[]> {
+  return (await q<{ id: string }>("select id from requests where not archived and state not in ('closed','completed','cancelled') order by created_at asc")).map((r) => r.id);
+}

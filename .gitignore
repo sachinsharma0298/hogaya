@@ -1,0 +1,11 @@
+.env
+.env.local
+.env*.local
+node_modules/
+.next/
+data/
+.DS_Store
+
+# private project notes (not published)
+hogaya_blueprint.md
+CLAUDE.md
