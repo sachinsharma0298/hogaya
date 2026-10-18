@@ -8,7 +8,7 @@ import { decideLive, MAX_REQUESTS_PER_DAY, MAX_REQUESTS_PER_USER_PER_DAY } from 
 import { DRY_RUN } from "@/lib/mode";
 import { getProviders, insertRequest, listRequests, requestCounts } from "@/lib/store";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET() {
   const auth = await requireRole("operator");

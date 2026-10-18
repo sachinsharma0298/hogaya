@@ -6,7 +6,7 @@ import { END_STATES } from "@/lib/state";
 import { getProviders } from "@/lib/store";
 
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

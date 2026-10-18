@@ -4,7 +4,7 @@ import { kick } from "@/lib/kick";
 import { getRequest, updateRequest } from "@/lib/store";
 
 // Operator button "Skip to shortlist": stop calling more providers.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole("operator");

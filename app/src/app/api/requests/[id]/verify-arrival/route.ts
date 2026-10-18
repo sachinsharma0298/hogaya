@@ -6,7 +6,7 @@ import { hasCallInFlight } from "@/lib/live-actions";
 import { getRequest } from "@/lib/store";
 
 // Operator button: Verify arrival. For live requests this is the click that places the real call.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole("operator");

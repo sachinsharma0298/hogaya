@@ -93,7 +93,8 @@ async function call<T = FoReply>(name: string, args: Record<string, unknown>): P
   const { client, transport } = make();
   await client.connect(transport);
   try {
-    const res = await client.callTool({ name, arguments: args });
+    // ask_fo with a full call brief can stay open for a minute or more: do not give up at the library's default 60 seconds.
+    const res = await client.callTool({ name, arguments: args }, undefined, { timeout: 240_000, resetTimeoutOnProgress: true });
     if (res.isError) throw new Error(JSON.stringify(res.content).slice(0, 300));
     if (res.structuredContent) return res.structuredContent as unknown as T;
     const text = (res.content as { type: string; text?: string }[]).find((c) => c.type === "text")?.text ?? "{}";

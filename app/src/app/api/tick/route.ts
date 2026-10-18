@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { tickAll } from "@/lib/engine";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // The one-minute timer calls this (see docs/DEPLOY.md). It moves every open booking one short step forward.
 // Allowed callers: the timer (it sends "Authorization: Bearer <CRON_SECRET>") or the signed-in operator ("Check now").

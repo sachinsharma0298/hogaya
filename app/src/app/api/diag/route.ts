@@ -7,7 +7,7 @@ import { MODE } from "@/lib/mode";
 import { isSignedIn } from "@/lib/fo-mcp";
 import { getSettings, listApproved } from "@/lib/store";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // Health checks for the live server. Operator (signed in) or the timer secret only. Places NO phone call:
 //   ?check=fo         sends Fo the harmless message "Reply with the word ready" and reads the reply

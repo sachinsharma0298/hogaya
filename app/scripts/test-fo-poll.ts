@@ -42,7 +42,7 @@ const SUMMARY = "Ramesh can come at 6 PM. {answered: true, status: confirmed}";
   assert.equal(late.status, "timeout");
   const stuck = await pollLiveCall(call({ started_at: ago(WORKING_LIMIT_MS + 5000) }), 5, fake({ reply: { status: "working" } }));
   assert.equal(stuck.status, "failed");
-  assert.equal((await pollLiveCall(call({ fo_conversation_id: undefined, started_at: ago(120_000) }), 5, fake({}))).status, "failed");
+  assert.equal((await pollLiveCall(call({ fo_conversation_id: undefined, started_at: ago(400_000) }), 5, fake({}))).status, "failed");
   assert.equal((await pollLiveCall(call({ fo_conversation_id: undefined }), 5, fake({}))).status, "working"); // still being started
   console.log("ok  10-minute summary timeout and 20-minute working limit");
   console.log("ALL PASSED");

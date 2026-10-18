@@ -5,7 +5,7 @@ import { kick } from "@/lib/kick";
 import { getRequest } from "@/lib/store";
 
 // "Check again" for a call whose summary did not arrive in time, or whose summary Claude could not read. No new call is ever placed.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole("operator");

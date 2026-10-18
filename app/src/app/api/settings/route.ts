@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/guard";
 import { getSettings, updateSettings } from "@/lib/store";
 import { kickAll } from "@/lib/kick";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function GET() {
   const auth = await requireRole("operator");

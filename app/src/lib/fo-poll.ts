@@ -61,8 +61,8 @@ export async function replyLiveCall(conversationId: string, answer: string, api:
 export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: FoApi = realApi): Promise<Polled> {
   const conv = call.fo_conversation_id;
   const now = Date.now();
-  // No conversation id yet: the call is still being started (ask_fo has not answered). Give it 90 seconds before giving up.
-  if (!conv) return now - new Date(call.started_at).getTime() < 90_000 ? { status: "working" } : { status: "failed", error: "Fo did not confirm the call started (no conversation)" };
+  // No conversation id yet: the call is still being started (ask_fo has not answered). Give it 5 minutes before giving up.
+  if (!conv) return now - new Date(call.started_at).getTime() < 300_000 ? { status: "working" } : { status: "failed", error: "Fo did not confirm the call started (no conversation)" };
 
   if (call.status === "waiting_summary") {
     const baseline = call.meta?.baseline ?? 1;

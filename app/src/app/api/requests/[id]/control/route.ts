@@ -10,7 +10,7 @@ const now = () => new Date().toISOString();
 
 // Operator controls on one booking: pause, resume, retry this step, take over manually, hand back to autopilot,
 // cancel, clear flags, and the demo "Fast-forward to T-60".
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole("operator");
