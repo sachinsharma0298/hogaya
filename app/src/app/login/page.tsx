@@ -12,6 +12,8 @@ import { usePoll } from "@/lib/use-poll";
 import type { Role } from "@/lib/types";
 
 const HOME: Record<Role, string> = { customer: "/me", pro: "/pro", operator: "/operator" };
+// Google sign-in is switched on later by setting NEXT_PUBLIC_GOOGLE_LOGIN=1 (after Google is set up in Supabase).
+const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_LOGIN === "1";
 const safeNext = (n: string | null) => (n && /^\/(?![/\\])/.test(n) ? n : "");
 
 function LoginForm() {
@@ -59,16 +61,20 @@ function LoginForm() {
         </div>
       ) : (
         <div className="mt-6 space-y-4">
-          <Button type="button" disabled={busy !== null} onClick={google} className="h-12 w-full rounded-2xl text-base">
-            {busy === "google" ? <Loader2 className="size-4 animate-spin" /> : t("login.google")}
-          </Button>
-          <p className="text-center text-xs text-foreground/70">{t("login.or")}</p>
+          {GOOGLE && (
+            <>
+              <Button type="button" disabled={busy !== null} onClick={google} className="h-12 w-full rounded-2xl text-base">
+                {busy === "google" ? <Loader2 className="size-4 animate-spin" /> : t("login.google")}
+              </Button>
+              <p className="text-center text-xs text-foreground/70">{t("login.or")}</p>
+            </>
+          )}
           <form onSubmit={sendLink} noValidate className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="email">{t("login.email")}</Label>
               <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" />
             </div>
-            <Button type="submit" variant="outline" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
+            <Button type="submit" variant={GOOGLE ? "outline" : "default"} disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
               {busy === "mail" ? <Loader2 className="size-4 animate-spin" /> : t("login.magic")}
             </Button>
           </form>
