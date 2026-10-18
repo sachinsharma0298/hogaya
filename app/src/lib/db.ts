@@ -82,6 +82,7 @@ async function openPglite(): Promise<Db> {
 
 export async function runMigrations(db: Db): Promise<string[]> {
   await db.query("create table if not exists public.schema_migrations (name text primary key, applied_at timestamptz not null default now())");
+  await db.query("alter table public.schema_migrations enable row level security"); // internal bookkeeping: nobody can read it through the public API
   const done = new Set((await db.query<{ name: string }>("select name from public.schema_migrations")).map((r) => r.name));
   const applied: string[] = [];
   const files = fs.existsSync(MIGRATIONS_DIR) ? fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort() : [];
