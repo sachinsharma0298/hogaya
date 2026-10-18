@@ -18,6 +18,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   // Customer screens never get provider phone numbers.
   const providers = (await getProviders()).map((p) => ({ ...p, phone: undefined }));
   // The booking page never needs the customer's phone number.
-  const request = access.user.role === "operator" ? { ...r, customer: { ...r.customer, phone: "" } } : customerView(r);
+  // The operator sees everything, except on their own bookings, which look like any customer's.
+  const request = access.user.role === "operator" && r.customer.user_id !== access.user.id ? { ...r, customer: { ...r.customer, phone: "" } } : customerView(r);
   return NextResponse.json({ request, providers });
 }

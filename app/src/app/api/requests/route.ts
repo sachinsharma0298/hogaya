@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   }
   // Real Fo calls only for approved people. Everyone else gets the same flow with simulated calls.
   const { live } = await decideLive(user, String(b.phone), b.category);
-  const r = await newRequest({ ...b, demo: !live, notes: typeof b.notes === "string" ? b.notes.slice(0, 500) : undefined, user_id: user.role === "customer" ? user.id : undefined });
+  const r = await newRequest({ ...b, demo: !live, notes: typeof b.notes === "string" ? b.notes.slice(0, 500) : undefined, user_id: user.id });
   await insertRequest(r);
   kick(r.id); // the first tick runs right after this response; later ticks come from the timer and the open screens
   return NextResponse.json({ id: r.id, demo: r.demo });

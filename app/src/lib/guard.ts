@@ -18,7 +18,7 @@ export async function requireBookingAccess(id: string, opts: { customerOnly?: bo
   const user = await getSessionUser();
   if (!user) return { error: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
   const request = await getRequest(id);
-  const owner = user.role === "customer" && request?.customer.user_id === user.id;
+  const owner = Boolean(request) && request!.customer.user_id === user.id; // the operator can book as a customer too
   const operator = user.role === "operator" && !opts.customerOnly;
   if (!request || !(owner || operator)) return { error: NextResponse.json({ error: "Booking not found." }, { status: 404 }) };
   return { user, request };

@@ -292,7 +292,7 @@ export default function BookPage() {
     if (!loading && !user) router.replace("/login?next=/book");
   }, [loading, user, router]);
   if (loading || !user) return <CustomerShell><StateBox title={t("loading.title")} /></CustomerShell>;
-  if (user.role !== "customer") {
+  if (user.role !== "customer" && user.role !== "operator") {
     return (
       <CustomerShell>
         <StateBox title={t("login.role.customer")} body={t("login.sub")} />

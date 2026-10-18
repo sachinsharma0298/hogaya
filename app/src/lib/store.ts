@@ -156,17 +156,17 @@ type Packed = ReturnType<typeof pack>;
 const REQ_SQL = {
   insert: `insert into requests (id,created_at,customer_id,category,problem,sector,time_window,notes,state,prev_state,step,demo,manual,archived,current_provider_name,matched,not_selected,
     chosen_provider_id,customer_choice,booking,flags,notifications,ctl)
-    values ($1,$2::timestamptz,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::text[],$17::text[],$18,$19::jsonb,$20::jsonb,$21::jsonb,$22::jsonb,$23::jsonb)`,
+    values ($1,$2::timestamptz,$3::uuid,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::text[],$17::text[],$18,$19::text::jsonb,$20::text::jsonb,$21::text::jsonb,$22::text::jsonb,$23::text::jsonb)`,
   update: `update requests set created_at=$2::timestamptz,customer_id=$3::uuid,category=$4,problem=$5,sector=$6,time_window=$7,notes=$8,state=$9,prev_state=$10,step=$11,demo=$12,manual=$13,
-    archived=$14,current_provider_name=$15,matched=$16::text[],not_selected=$17::text[],chosen_provider_id=$18,customer_choice=$19::jsonb,booking=$20::jsonb,flags=$21::jsonb,
-    notifications=$22::jsonb,ctl=$23::jsonb where id=$1`,
+    archived=$14,current_provider_name=$15,matched=$16::text[],not_selected=$17::text[],chosen_provider_id=$18,customer_choice=$19::text::jsonb,booking=$20::text::jsonb,flags=$21::text::jsonb,
+    notifications=$22::text::jsonb,ctl=$23::text::jsonb where id=$1`,
 };
 const PRIV_SQL = `insert into request_private (request_id,customer_name,customer_phone,customer_consent,customer_consent_at,address,arrival_code)
   values ($1,$2,$3,$4,$5::timestamptz,$6,$7)
   on conflict (request_id) do update set customer_name=excluded.customer_name, customer_phone=excluded.customer_phone, customer_consent=excluded.customer_consent,
   customer_consent_at=excluded.customer_consent_at, address=excluded.address, arrival_code=excluded.arrival_code`;
 const CALL_SQL = `insert into calls (id,request_id,kind,provider_id,provider_name,status,started_at,ended_at,fo_conversation_id,progress,question,operator_reply,demo,summary_text,json,meta)
-  values ($1,$2,$3,$4,$5,$6,$7::timestamptz,$8::timestamptz,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb)
+  values ($1,$2,$3,$4,$5,$6,$7::timestamptz,$8::timestamptz,$9,$10,$11,$12,$13,$14,$15::text::jsonb,$16::text::jsonb)
   on conflict (id) do update set kind=excluded.kind, provider_id=excluded.provider_id, provider_name=excluded.provider_name, status=excluded.status, started_at=excluded.started_at,
   ended_at=excluded.ended_at, fo_conversation_id=excluded.fo_conversation_id, progress=excluded.progress, question=excluded.question, operator_reply=excluded.operator_reply,
   demo=excluded.demo, summary_text=excluded.summary_text, json=excluded.json, meta=excluded.meta`;
@@ -306,7 +306,9 @@ export async function saveUser(u: User): Promise<User> {
 // ---- Fo sign-in tokens (server only) ---------------------------------------------------------------------
 
 export async function readFoAuth(): Promise<Record<string, unknown>> {
-  const data = ((await q("select data from fo_oauth where id=1"))[0]?.data as Record<string, unknown>) ?? {};
+  let data = ((await q("select data from fo_oauth where id=1"))[0]?.data ?? {}) as Record<string, unknown> | string;
+  if (typeof data === "string") { try { data = JSON.parse(data) as Record<string, unknown>; } catch { data = {}; } } // repairs rows saved before the JSON fix
+  data = data as Record<string, unknown>;
   if (Object.keys(data).length) return data;
   // Local convenience: carry the old file-based sign-in over once, so you do not have to sign in to Fo again on this Mac.
   try {
@@ -315,7 +317,7 @@ export async function readFoAuth(): Promise<Record<string, unknown>> {
     const { DATA_DIR } = await import("./paths");
     const old = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "fo-auth.json"), "utf8")) as Record<string, unknown>;
     if ((await (await import("./db")).getDb()).engine === "pglite" && process.env.PGLITE_DIR !== "memory" && old.tokens) {
-      await q("update fo_oauth set data=$1::jsonb where id=1", [JSON.stringify(old)]);
+      await q("update fo_oauth set data=$1::text::jsonb where id=1", [JSON.stringify(old)]);
       return old;
     }
   } catch { /* no old file */ }
@@ -325,7 +327,7 @@ export async function writeFoAuth(patch: Record<string, unknown>) {
   const cur = await readFoAuth();
   const next = { ...cur, ...patch };
   for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
-  await q("update fo_oauth set data=$1::jsonb, updated_at=now() where id=1", [JSON.stringify(next)]);
+  await q("update fo_oauth set data=$1::text::jsonb, updated_at=now() where id=1", [JSON.stringify(next)]);
 }
 
 // ---- approved phone numbers: the only numbers a LIVE Fo call may reach ------------------------------------

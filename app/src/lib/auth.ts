@@ -23,8 +23,10 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
   const approved = !existing && role === "customer" && email ? await findApprovedCustomerByEmail(email) : undefined; // a customer Hogaya added: their name and number are already known
   const name = existing?.name || approved?.name || String(au.user_metadata?.full_name ?? au.user_metadata?.name ?? provider?.name ?? email.split("@")[0] ?? "");
   const want = { role, provider_id: role === "pro" ? provider?.id : undefined };
-  if (existing && existing.role === want.role && existing.provider_id === want.provider_id) return existing;
-  return saveUser({ id: au.id, role, name, phone: existing?.phone ?? (approved ? `+91${approved.phone}` : ""), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
+  // A person Hogaya approved as a customer (the operator too) has their number filled in from that record.
+  const approvedPhone = existing?.phone || role === "pro" || !email ? undefined : (await findApprovedCustomerByEmail(email))?.phone;
+  if (existing && existing.role === want.role && existing.provider_id === want.provider_id && !approvedPhone) return existing;
+  return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? `+91${approved.phone}` : approvedPhone ? `+91${approvedPhone}` : ""), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
 }
 
 export async function getSessionUser(): Promise<User | undefined> {

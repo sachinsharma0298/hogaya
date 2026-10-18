@@ -3,7 +3,7 @@
 // That table has row-level security with no policy and no browser privileges: the tokens never reach a browser.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { UnauthorizedError, type OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import { auth, UnauthorizedError, type OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { OAuthClientInformationMixed, OAuthClientMetadata, OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { readFoAuth, writeFoAuth } from "./store";
 
@@ -59,7 +59,11 @@ function make() {
 /** Start sign-in. Returns the Wajo sign-in URL to open in the browser, or null if already signed in. */
 export async function startAuth(): Promise<string | null> {
   await write({ authUrl: undefined });
-  const { client, transport } = make();
+  const { client, transport, provider } = make();
+  // Never trust "no error" alone: with no saved tokens we are NOT signed in, so start the sign-in.
+  if (!(await isSignedIn())) {
+    if ((await auth(provider, { serverUrl: FO_URL })) === "REDIRECT") return (await read()).authUrl ?? null;
+  }
   try {
     await client.connect(transport);
     await client.callTool({ name: "list_fo_conversations", arguments: {} }); // read-only; Fo only asks for sign-in on a real tool call

@@ -19,7 +19,7 @@ export default function MyBookings() {
   const { loading, user } = useSession();
   const list = usePoll<{ bookings: Row[] }>("/api/me/bookings", 3000);
   useEffect(() => {
-    if (!loading && (!user || user.role !== "customer")) router.replace("/login?next=/me");
+    if (!loading && (!user || (user.role !== "customer" && user.role !== "operator"))) router.replace("/login?next=/me");
   }, [loading, user, router]);
 
   if (loading || !user) return <CustomerShell><StateBox title={t("loading.title")} /></CustomerShell>;
