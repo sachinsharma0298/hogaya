@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/guard";
-import { clearFlags, pauseBooking, resumeBooking, transition } from "@/lib/booking";
+import { randomInt } from "node:crypto";
+import { clearFlags, pauseBooking, resolveFlagsMatching, resumeBooking, transition } from "@/lib/booking";
 import { retryStep } from "@/lib/engine";
 import { kick } from "@/lib/kick";
 import { END_STATES } from "@/lib/state";
@@ -61,6 +62,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await updateRequest(id, (x) => { x.booking!.reconfirm_at = now(); });
       await transition(id, "reconfirm_due", "Fast-forwarded to T–60 (demo)");
       kick(id); // starts the reconfirm only if the booking runs by itself
+      break;
+    }
+    case "fast_forward_confirm": {
+      const b = r.booking;
+      if (!b || b.on_the_way_at || b.provider_confirmed === false) return fail("Only a confirmed booking can be fast-forwarded to the confirmation call.");
+      await updateRequest(id, (x) => { x.booking!.confirm_call_at = now(); x.events.push({ at: now(), text: "Fast-forwarded to T–30: the confirmation call is due (demo)" }); });
+      kick(id);
+      break;
+    }
+    case "new_code": {
+      // Issue a fresh completion code (the old one stops working): for an expired or locked code. Only after the customer confirmed the arrival.
+      const b = r.booking;
+      if (!b?.arrival_verified_at || b.outcome === "completed") return fail("There is no open completion code to replace.");
+      const code = String(randomInt(100000, 1000000));
+      await updateRequest(id, (x) => {
+        x.booking!.arrival_code = code; x.booking!.code_attempts = 0; x.booking!.code_issued_at = now();
+        x.booking!.code_expires_at = new Date(Date.now() + 24 * 3600_000).toISOString();
+        x.events.push({ at: now(), text: "Operator issued a new completion code" });
+      });
+      await resolveFlagsMatching(id, /completion code|code expired/i);
+      break;
+    }
+    case "expire_code": {
+      const b = r.booking;
+      if (!b?.arrival_verified_at || b.outcome === "completed") return fail("There is no open completion code.");
+      await updateRequest(id, (x) => { x.booking!.code_expires_at = new Date(Date.now() - 1000).toISOString(); x.events.push({ at: now(), text: "Operator revoked the completion code" }); });
       break;
     }
     case "archive":

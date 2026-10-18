@@ -71,12 +71,15 @@ const book = (j: Jar, o: Record<string, unknown>) => j.j<{ id: string; demo: boo
   r = await until(O, id, "booked", (x) => x.state === "booked");
   console.log("ok  B: with Autopilot OFF every live call waits for the operator's click, and the engine follows each call to its summary");
 
-  // C. the Pro enters the code, bill, job done (not part of the engine, a regression check)
+  // C. the new arrival flow: Pro says arrived, the customer confirms, the code is issued, the Pro submits it
   const P = await login({ role: "pro", provider_id: pid });
+  assert.equal((await P.j(`/api/pro/jobs/${id}/arrive`, { method: "POST" })).status, 200);
+  assert.equal((await C.j(`/api/requests/${id}/confirm-arrival`, { method: "POST", json: { arrived: true } })).status, 200);
   const code = (await get(C, id)).booking!.arrival_code;
-  assert.equal((await P.j(`/api/pro/jobs/${id}/code`, { method: "POST", json: { code: "0000" === code ? "1111" : "0000" } })).body.arrived, false);
-  assert.equal((await P.j(`/api/pro/jobs/${id}/code`, { method: "POST", json: { code } })).body.arrived, true);
-  console.log("ok  C: wrong code flags, right code arrives");
+  assert.match(code, /^\d{6}$/);
+  assert.equal((await P.j(`/api/pro/jobs/${id}/code`, { method: "POST", json: { code: code === "000000" ? "111111" : "000000" } })).body.ok, false);
+  assert.equal((await P.j(`/api/pro/jobs/${id}/code`, { method: "POST", json: { code } })).body.completed, true);
+  console.log("ok  C: Pro arrives, customer confirms, code issued; a wrong code is refused and the right one completes");
 
   // D. Autopilot ON: a new live booking runs the whole way (provider, customer, booking calls) with no clicks, then T-60 reconfirm
   await O.j("/api/settings", { method: "POST", json: { autopilot: true } });

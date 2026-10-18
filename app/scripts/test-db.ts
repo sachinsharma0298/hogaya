@@ -111,6 +111,17 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   assert.match((await callBlockedReason("r-live2", { kind: "customer" }, true)) ?? "", /approved list/); // customer is approved for A@x.in only; this request's owner has another email
   assert.equal(await callBlockedReason("r-live2", { kind: "booking", providerId: "p-real" }, true), "Another Fo call is already in progress (one call at a time).");
   console.log("ok  before every live call the number must be on the approved list");
+  // the lock behind the "lost live call" bug: only its owner can release it
+  const t1 = await store.lockRequest("r-1", 60);
+  assert.ok(t1); assert.equal(await store.lockRequest("r-1", 60), null, "a second tick cannot take a held lock");
+  await store.unlockRequest("r-1", "someone-elses-token"); assert.equal(await store.lockRequest("r-1", 60), null, "a late leftover request cannot free the lock");
+  await store.unlockRequest("r-1", t1!); const t2 = await store.lockRequest("r-1", 60); assert.ok(t2); await store.unlockRequest("r-1", t2!);
+  console.log("ok  tick lock: held locks cannot be taken or released by anyone else (the cause of the lost live call)");
+  // JSON columns keep their type (the production-driver bug: JSON saved as text)
+  await store.updateRequest("r-1", (x) => { x.flags.push({ at: now, reason: "t" }); });
+  const jt = await (await getDb()).query<{ f: string; b: string }>("select jsonb_typeof(flags) f, jsonb_typeof(booking) b from requests where id='r-1'");
+  assert.deepEqual(jt[0], { f: "array", b: "object" });
+  console.log("ok  JSON columns are stored as real JSON (arrays/objects), not text");
   await store.writeFoAuth({ tokens: { access_token: "x" } }); await store.writeFoAuth({ authUrl: "u" });
   assert.deepEqual(Object.keys(await store.readFoAuth()).sort(), ["authUrl", "tokens"]);
   console.log("ok  Fo tokens stored server-side");

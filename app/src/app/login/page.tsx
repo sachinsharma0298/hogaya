@@ -21,8 +21,12 @@ function LoginForm() {
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const cfg = usePoll<{ supabase: boolean; dev: boolean }>("/api/auth/config", 600000).data;
+  const [mode, setMode] = useState<"signin" | "create" | "link">("signin");
   const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState<"mail" | "google" | null>(null);
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState<"mail" | "google" | "pw" | null>(null);
   const [sentTo, setSentTo] = useState("");
   const [error, setError] = useState(params.get("error") ? t("login.err.callback") : "");
   const redirectTo = () => `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
@@ -37,6 +41,30 @@ function LoginForm() {
     setBusy(null);
     if (err) return setError(t("login.err.send"));
     setSentTo(addr);
+  }
+  async function afterSession() {
+    // The password sign-in sets the session in this browser; ask the server who we are, then go to the right home page.
+    const me = (await (await fetch("/api/auth/me", { cache: "no-store" })).json().catch(() => ({}))) as { user?: { role: Role } };
+    window.location.assign(next || (me.user ? HOME[me.user.role] : "/me"));
+  }
+  async function passwordSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy("pw");
+    const { error: err } = await supabaseBrowser().auth.signInWithPassword({ email: email.trim(), password });
+    if (err) { setBusy(null); return setError(t("login.err.creds")); }
+    await afterSession();
+  }
+  async function createAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy("pw");
+    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, phone, password }) });
+    const b = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) { setBusy(null); return setError(res.status === 409 ? t("login.err.exists") : res.status === 403 ? t("login.err.reserved") : res.status === 400 ? (password.length < 8 || password.length > 72 ? t("login.err.pw") : t("login.err.fields")) : t("login.err.generic")); }
+    const { error: err } = await supabaseBrowser().auth.signInWithPassword({ email: email.trim(), password });
+    if (err) { setBusy(null); return setError(t("login.err.generic")); }
+    await afterSession();
   }
   async function google() {
     setError("");
@@ -61,6 +89,11 @@ function LoginForm() {
         </div>
       ) : (
         <div className="mt-6 space-y-4">
+          <div role="tablist" className="grid grid-cols-3 gap-1 rounded-2xl border bg-card p-1 text-sm font-medium">
+            {(["signin", "create", "link"] as const).map((m) => (
+              <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => { setMode(m); setError(""); }} className={`rounded-xl px-2 py-2 transition ${mode === m ? "bg-primary text-primary-foreground" : "text-foreground/75"}`}>{t(`login.tab.${m}`)}</button>
+            ))}
+          </div>
           {GOOGLE && (
             <>
               <Button type="button" disabled={busy !== null} onClick={google} className="h-12 w-full rounded-2xl text-base">
@@ -69,13 +102,25 @@ function LoginForm() {
               <p className="text-center text-xs text-foreground/70">{t("login.or")}</p>
             </>
           )}
-          <form onSubmit={sendLink} noValidate className="space-y-3">
+          <form onSubmit={mode === "signin" ? passwordSignIn : mode === "create" ? createAccount : sendLink} noValidate className="space-y-3">
+            {mode === "create" && (
+              <>
+                <div className="space-y-1.5"><Label htmlFor="name">{t("login.name")}</Label><Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-base" /></div>
+                <div className="space-y-1.5"><Label htmlFor="phone">{t("login.phone")}</Label><Input id="phone" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-base" /><p className="text-xs text-foreground/70">{t("login.phone.note")}</p></div>
+              </>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email">{t("login.email")}</Label>
               <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" />
             </div>
-            <Button type="submit" variant={GOOGLE ? "outline" : "default"} disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
-              {busy === "mail" ? <Loader2 className="size-4 animate-spin" /> : t("login.magic")}
+            {mode !== "link" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="password">{t("login.password")}</Label>
+                <Input id="password" type="password" autoComplete={mode === "create" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 text-base" />
+              </div>
+            )}
+            <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
+              {busy ? <Loader2 className="size-4 animate-spin" /> : mode === "signin" ? t("login.signin.btn") : mode === "create" ? t("login.create.btn") : t("login.magic")}
             </Button>
           </form>
           <p className="text-xs text-foreground/75">{t("login.pro.note")}</p>

@@ -15,13 +15,18 @@ function duration(c: CallRecord): string {
 }
 
 function title(c: CallRecord): string {
+  const base = title0(c);
+  return c.meta?.attempt && c.meta.attempt > 1 ? `${base} (attempt ${c.meta.attempt})` : base;
+}
+
+function title0(c: CallRecord): string {
   switch (c.kind) {
     case "provider": return `Fo called ${first(c.provider_name)}`;
     case "customer": return "Fo called the customer";
     case "booking": return `Fo called ${first(c.provider_name)} to book`;
     case "reconfirm": return `Fo reconfirmed with ${first(c.provider_name)}`;
     case "arrival": return `Fo checked arrival with ${first(c.provider_name)}`;
-    default: return `Fo checked on ${first(c.provider_name)}`;
+    default: return `Final confirmation call to ${first(c.provider_name)}`;
   }
 }
 

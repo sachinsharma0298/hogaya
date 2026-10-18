@@ -12,11 +12,12 @@
 import { agentForCall, getAgent, jobInfo, type CallJob, type Option, type VoiceProvider } from "./agent-service";
 import { autoRuns, autopilotActive, callBlockedReason, flagBooking, resolveLatestFlag, transition } from "./booking";
 import { approvedPros } from "./live";
+import { DRY_RUN } from "./mode";
 import {
-  applyArrival, applyBooking, applyCustomer, applyProvider, applyReconfirm, confirmedOptions, hasCallInFlight, optionFor,
+  applyArrival, applyBooking, applyConfirmation, applyCustomer, applyProvider, applyReconfirm, confirmedOptions, hasCallInFlight, optionFor,
 } from "./live-actions";
 import { recommendationReason } from "./recommend";
-import { attemptCount, END_STATES, isHold, MAX_ATTEMPTS } from "./state";
+import { attemptCount, END_STATES, isHold, maxAttempts } from "./state";
 import {
   getProviders, getRequest, getSettings, listTickIds, lockRequest, patchCall, simulatedProviders, unlockRequest, updateRequest,
 } from "./store";
@@ -38,8 +39,8 @@ const enT = (key: string, vars?: Record<string, string | number>) => {
 /** A second attempt waits a minute for live calls, almost nothing for simulated ones. */
 const retryDelayMs = (live: boolean) => (live ? 60_000 : 1_500);
 
-type StartKind = Exclude<CallKind, "on_the_way">;
-const LABEL: Record<StartKind, string> = { provider: "Call", customer: "Customer call", booking: "Booking call", reconfirm: "Reconfirm", arrival: "Arrival check" };
+type StartKind = CallKind;
+const LABEL: Record<StartKind, string> = { provider: "Call", customer: "Customer call", booking: "Booking call", reconfirm: "Reminder and reconfirm", arrival: "Arrival check", on_the_way: "Final confirmation call" };
 const isUniqueViolation = (e: unknown) => /one_live_call_at_a_time|duplicate key|unique/i.test(e instanceof Error ? e.message : String(e));
 
 // ---- building a call --------------------------------------------------------------------------------------
@@ -67,7 +68,8 @@ async function buildJob(r: HogayaRequest, kind: StartKind, providerId: string | 
       const provider = find(r.booking?.provider_id);
       return provider && r.booking ? { kind, request: r, provider, simulate, askExactTime: r.booking.slot_exact === false } : null;
     }
-    case "arrival": {
+    case "arrival":
+    case "on_the_way": {
       const provider = find(r.booking?.provider_id);
       return provider && r.booking ? { kind, request: r, provider } : null;
     }
@@ -113,7 +115,11 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
     await updateRequest(id, (x) => {
       x.calls.push({
         id: callId, kind, provider_id: target.id, provider_name: target.name, status: "calling", started_at: now(), demo: !live,
-        meta: kind === "reconfirm" ? { simulate, ask_exact: job.askExactTime } : undefined,
+        meta: {
+          ...(kind === "reconfirm" ? { simulate, ask_exact: job.askExactTime } : {}),
+          recipient: kind === "customer" ? "customer" : "pro", recipient_name: kind === "customer" ? r.customer.name : target.name, // the mock-call log
+          attempt: attemptCount(r, { kind: kind as never, providerId: target.id }) + 1,
+        },
       });
       if (kind === "provider") {
         x.step = "calling_provider";
@@ -176,7 +182,7 @@ async function afterProviderAttempt(id: string, c?: CallRecord) {
   if (!r || !c) return;
   const calls = r.calls.filter((x) => x.kind === "provider" && x.provider_id === c.provider_id);
   const definitive = calls.some((x) => x.status === "done" && ["confirmed", "declined"].includes((x.json as ProviderCallJson | undefined)?.status ?? ""));
-  if (!definitive && calls.length >= MAX_ATTEMPTS) await flagBooking(id, `${c.provider_name}: no answer after ${MAX_ATTEMPTS} tries`, { halt: false });
+  if (!definitive && calls.length >= maxAttempts(r)) await flagBooking(id, `${c.provider_name}: no answer after ${maxAttempts(r)} tries`, { halt: false });
 }
 
 // ---- a finished call ----------------------------------------------------------------------------------------
@@ -206,6 +212,7 @@ export async function processSummary(id: string, callId: string, text: string): 
     case "booking": await applyBooking(id, callId, json as BookingCallJson); break;
     case "reconfirm": await applyReconfirm(id, callId, json as ReconfirmJson, Boolean(c.meta?.simulate)); await endPending(id); break;
     case "arrival": await applyArrival(id, callId, json as ArrivalJson); break;
+    case "on_the_way": await applyConfirmation(id, callId, json as Record<string, unknown>); break;
   }
   return true;
 }
@@ -307,7 +314,7 @@ async function planProviders(r: HogayaRequest, auto: boolean): Promise<Action | 
     for (const pid of r.matched.filter((m) => !(r.skipped ?? []).includes(m))) {
       const calls = r.calls.filter((c) => c.kind === "provider" && c.provider_id === pid);
       if (calls.some((c) => c.status === "done" && ["confirmed", "declined"].includes((c.json as ProviderCallJson | undefined)?.status ?? ""))) continue;
-      if (calls.length >= MAX_ATTEMPTS) continue;
+      if (calls.length >= maxAttempts(r)) continue;
       if (calls.length > 0 && !auto) continue; // manual mode: the operator decides whether to call again
       const last = calls[calls.length - 1];
       if (last?.ended_at && Date.now() < new Date(last.ended_at).getTime() + retryDelayMs(live)) { waiting = true; break; }
@@ -337,20 +344,27 @@ async function plan(r: HogayaRequest): Promise<Action | null> {
   if (!auto) return null; // live without Autopilot: the operator's buttons start the next call
   const b = r.booking;
   const act = (kind: StartKind, providerId?: string): Action => async () => (await startCall(id, kind, providerId)) !== "line" ;
-  const book = (providerId: string): Action | null => (attemptCount(r, { kind: "booking", providerId }) < MAX_ATTEMPTS ? act("booking", providerId) : null);
+  const book = (providerId: string): Action | null => (attemptCount(r, { kind: "booking", providerId }) < maxAttempts(r) ? act("booking", providerId) : null);
   if (b && b.provider_confirmed === false) return book(b.provider_id); // a backup Pro needs its own booking call
   switch (r.state) {
     case "options_ready": {
       if (r.customer_choice) return book(r.customer_choice.provider_id);
       if (r.customer_declined) return null;
-      return attemptCount(r, { kind: "customer" }) < MAX_ATTEMPTS ? act("customer") : null;
+      return attemptCount(r, { kind: "customer" }) < maxAttempts(r) ? act("customer") : null;
     }
     case "customer_chose":
     case "booking_provider":
       return !b && r.customer_choice ? book(r.customer_choice.provider_id) : null;
+    case "reconfirmed": {
+      // The second call of the final hour (30 minutes before the slot). Only simulated bookings run it by themselves:
+      // there is no real call for it yet, so a live booking never gets a fake one.
+      if (!(r.demo || DRY_RUN) || !b || b.on_the_way_at || r.calls.some((c) => c.kind === "on_the_way")) return null;
+      if (b.confirm_call_at && new Date(b.confirm_call_at).getTime() > Date.now()) return null;
+      return act("on_the_way");
+    }
     case "reconfirm_due": {
       if (!b || b.reconfirmed_at) return null;
-      return attemptCount(r, { kind: "reconfirm", providerId: b.provider_id }) < MAX_ATTEMPTS ? act("reconfirm") : null;
+      return attemptCount(r, { kind: "reconfirm", providerId: b.provider_id }) < maxAttempts(r) ? act("reconfirm") : null;
     }
     default:
       return null;

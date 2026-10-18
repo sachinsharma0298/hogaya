@@ -8,6 +8,7 @@ import { usePoll } from "@/lib/use-poll";
 import { applyFilters, BookingList, type Filters } from "./booking-list";
 import { BookingDetail } from "./booking-detail";
 import type { ConsoleData, ConsoleSettings } from "./console-types";
+import { AccountsTab } from "./accounts-tab";
 import { ApprovedTab } from "./approved-tab";
 import { ProvidersTab } from "./providers-tab";
 
@@ -15,7 +16,7 @@ export default function Operator() {
   const session = useSession();
   const { data, error } = usePoll<ConsoleData>("/api/requests", 3000);
   const settings = usePoll<ConsoleSettings>("/api/settings", 2000).data ?? { autopilot: false, simulate_no_reconfirm: false };
-  const [tab, setTab] = useState<"bookings" | "providers" | "approved">("bookings");
+  const [tab, setTab] = useState<"bookings" | "providers" | "approved" | "accounts">("bookings");
   const [sel, setSel] = useState<string | undefined>();
   const [filters, setFilters] = useState<Filters>({ search: "", category: "all", flaggedOnly: false, showArchived: false });
   const [note, setNote] = useState("");
@@ -71,7 +72,7 @@ export default function Operator() {
             <Brand small english />
             <span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span>
             <nav aria-label="Console sections" className="flex rounded-full border bg-card p-0.5 text-sm font-medium">
-              {(["bookings", "providers", "approved"] as const).map((t) => (
+              {(["bookings", "providers", "approved", "accounts"] as const).map((t) => (
                 <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-1.5 capitalize transition ${tab === t ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}>{t}</button>
               ))}
             </nav>
@@ -101,6 +102,7 @@ export default function Operator() {
 
         {data && tab === "providers" && <ProvidersTab providers={data.providers} />}
         {tab === "approved" && <ApprovedTab />}
+        {tab === "accounts" && <AccountsTab />}
         {data && tab === "bookings" && (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
             <BookingList all={all} shown={shown} selectedId={r?.id} onSelect={setSel} filters={filters} setFilters={setFilters} onArchiveAll={archiveAll} />

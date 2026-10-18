@@ -3,7 +3,7 @@
 import { type JobInfo, type Option } from "./agent-service";
 import { flagBooking, notify, resolveFlagsMatching, transition } from "./booking";
 import { bookNow } from "./orchestrator";
-import { attemptCount, MAX_ATTEMPTS } from "./state";
+import { attemptCount, maxAttempts } from "./state";
 import { rankOptions } from "./recommend";
 import { getProviders, getRequest, patchCall, updateRequest, updateSettings } from "./store";
 import type { ReconfirmJson } from "./summarise";
@@ -66,9 +66,9 @@ export async function applyCustomer(id: string, callId: string, json: CustomerCa
   if (json.confirmed === false) {
     await log(id, "Customer declined the offered options");
     await flagBooking(id, "The customer declined every option");
-  } else if (attemptCount(r, { kind: "customer" }) >= MAX_ATTEMPTS || r.demo) {
+  } else if (attemptCount(r, { kind: "customer" }) >= maxAttempts(r)) {
     await log(id, "Customer's answer was unclear");
-    await flagBooking(id, `The customer gave no clear answer after ${MAX_ATTEMPTS} tries`);
+    await flagBooking(id, `The customer gave no clear answer after ${maxAttempts(r)} tries`);
   } else {
     await log(id, "Customer's answer was unclear: trying once more");
   }
@@ -83,7 +83,7 @@ export async function applyBooking(id: string, callId: string, json: BookingCall
     await log(id, `${provider?.name} did not confirm the booking`);
     const tries = attemptCount(r, { kind: "booking", providerId: c.provider_id });
     if (json.confirmed === false) await flagBooking(id, `${provider?.name} declined the booking`);
-    else if (tries >= MAX_ATTEMPTS || r.demo) await flagBooking(id, `${provider?.name}: no clear confirmation after ${MAX_ATTEMPTS} tries`);
+    else if (tries >= maxAttempts(r)) await flagBooking(id, `${provider?.name}: no clear confirmation after ${maxAttempts(r)} tries`);
     return;
   }
   if (r.booking && r.booking.provider_confirmed === false) {
@@ -145,6 +145,19 @@ export async function applyReconfirm(id: string, callId: string, json: Reconfirm
   });
   await notify(id, "backup", { from: provider.name.split(" ")[0], to: backup.name.split(" ")[0] });
   await transition(id, "booking_provider"); // the backup still needs its own booking call
+}
+
+/** The final-hour confirmation call came back: it is recorded; the booking stays "reconfirmed" until the Pro says they have arrived. */
+export async function applyConfirmation(id: string, callId: string, json: Record<string, unknown>) {
+  await patchCall(id, callId, { status: "done", json });
+  const r = await getRequest(id);
+  const c = r?.calls.find((x) => x.id === callId);
+  if (!r?.booking || !c) return;
+  if (json.on_the_way === false) {
+    await log(id, `${c.provider_name} could not confirm in the final hour`);
+    return flagBooking(id, `${c.provider_name} did not confirm in the final hour`);
+  }
+  await updateRequest(id, (x) => { x.booking!.on_the_way_at = now(); x.events.push({ at: now(), text: `Final confirmation call: ${c.provider_name} confirmed they are coming` }); });
 }
 
 export async function applyArrival(id: string, callId: string, json: ArrivalJson) {

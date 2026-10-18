@@ -102,6 +102,9 @@ export interface CallMeta {
   waiting_since?: string;
   simulate?: boolean; // reconfirm: the operator's "Simulate no reconfirm" demo switch was on
   ask_exact?: boolean; // reconfirm: ask the Pro for an exact time
+  recipient?: string; // who is phoned: "pro" or "customer" (the mock-call log)
+  recipient_name?: string;
+  attempt?: number; // 1, 2, ... for this person and step
 }
 
 export type StepKey =
@@ -124,7 +127,13 @@ export interface Booking {
   reconfirmed_at?: string;
   on_the_way_at?: string;
   provider_confirmed?: boolean; // false while a backup provider has been activated but not yet confirmed by a call
-  arrival_verified_at?: string;
+  pro_arrived_at?: string; // the Pro said "I have arrived" in the Pro app
+  arrival_verified_at?: string; // the CUSTOMER confirmed the Pro is there: only then is the completion code issued
+  code_issued_at?: string;
+  code_expires_at?: string;
+  code_attempts?: number; // wrong codes typed by the Pro (locked after 5)
+  confirm_call_at?: string; // when the final-hour confirmation call is due (30 minutes before the slot)
+  ranking?: { stars: number; note: string; by: string; at: string }; // the operator's ranking after a completed job
   arrival_flag?: string; // set when the provider did not give the right code: the operator must look
   reconfirm_at?: string; // when the automatic reconfirm is due (60 minutes before the slot)
   reconfirm_pending?: boolean;
@@ -141,7 +150,7 @@ export interface Booking {
 /** The booking state machine. Paused, flagged and cancelled can happen at any point. */
 export type BookingState =
   | "requested" | "calling_providers" | "options_ready" | "calling_customer" | "customer_chose" | "booking_provider"
-  | "booked" | "reconfirm_due" | "reconfirmed" | "arrived" | "completed" | "closed"
+  | "booked" | "reconfirm_due" | "reconfirmed" | "pro_arrived" | "arrived" | "completed" | "closed"
   | "flagged" | "paused" | "cancelled";
 
 export interface Flag {
@@ -150,7 +159,7 @@ export interface Flag {
   resolved_at?: string;
 }
 
-export type NotifyKind = "booked" | "backup" | "reconfirmed" | "arrived" | "bill";
+export type NotifyKind = "booked" | "backup" | "reconfirmed" | "pro_arrived" | "arrived" | "completed" | "bill";
 export interface Notification {
   id: string;
   at: string;

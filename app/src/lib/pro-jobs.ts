@@ -4,7 +4,7 @@ import { visitAmount } from "./recommend";
 import type { HogayaRequest, ProviderCallJson } from "./types";
 
 export type ProTab = "new" | "booked" | "today" | "done";
-export type ProStatus = "new" | "confirmed" | "reconfirm_pending" | "arrived" | "completed" | "no_show" | "not_selected" | "cancelled";
+export type ProStatus = "new" | "confirmed" | "reconfirm_pending" | "pro_arrived" | "arrived" | "completed" | "no_show" | "not_selected" | "cancelled";
 
 export interface ProJob {
   id: string;
@@ -20,10 +20,12 @@ export interface ProJob {
   visit_charge: string | null;
   labour_estimate: string | null;
   address: string | null; // only after the customer has confirmed this Pro
-  can_enter_code: boolean;
+  can_confirm_arrival: boolean; // I have arrived
+  can_enter_code: boolean; // only after the customer has confirmed the arrival
   arrived: boolean;
   bill: { visit_fee: number; labour: number; parts: number; total: number } | null;
   can_send_bill: boolean;
+  completed: boolean;
   created_at: string;
 }
 
@@ -68,6 +70,7 @@ function toJob(r: HogayaRequest, providerId: string, j: ProviderCallJson): ProJo
     if (b!.outcome === "no_show") { status = "no_show"; tab = "done"; }
     else if (b!.outcome === "completed" || b!.job_done_at) { status = "completed"; tab = "done"; }
     else if (b!.arrival_verified_at) { status = "arrived"; tab = "booked"; }
+    else if (b!.pro_arrived_at) { status = "pro_arrived"; tab = "booked"; }
     else { status = b!.reconfirm_pending ? "reconfirm_pending" : "confirmed"; tab = "booked"; }
     // "Today": the slot day is the request day (or the next day for "Tomorrow ...")
     if (tab === "booked") {
@@ -83,10 +86,12 @@ function toJob(r: HogayaRequest, providerId: string, j: ProviderCallJson): ProJo
     slot: mine ? b!.slot : j.slot, slot_exact: mine ? b!.slot_exact !== false : j.slot_exact,
     visit_charge: j.visit_charge, labour_estimate: j.labour_estimate,
     address: chosenMe && status !== "not_selected" && status !== "cancelled" ? r.address : null,
-    can_enter_code: mine && !b!.arrival_verified_at && !b!.job_done_at,
-    arrived: mine && !!b!.arrival_verified_at,
+    can_confirm_arrival: mine && !b!.pro_arrived_at && !b!.arrival_verified_at && !b!.job_done_at && ["booked", "reconfirm_due", "reconfirmed"].includes(r.state),
+    can_enter_code: mine && !!b!.arrival_verified_at && !b!.job_done_at,
+    arrived: mine && !!b!.pro_arrived_at,
     bill: mine && b!.bill ? { visit_fee: b!.bill.visit_fee, labour: b!.bill.labour, parts: b!.bill.parts, total: b!.bill.total } : null,
     can_send_bill: mine && !!b!.arrival_verified_at && !b!.bill && !b!.job_done_at,
+    completed: mine && b!.outcome === "completed",
     created_at: r.created_at,
   };
 }

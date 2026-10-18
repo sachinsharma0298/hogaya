@@ -14,6 +14,7 @@ const TONE: Record<ProStatus, string> = {
   new: "bg-accent text-accent-foreground",
   confirmed: "bg-emerald-100 text-emerald-800",
   reconfirm_pending: "bg-amber-100 text-amber-800",
+  pro_arrived: "bg-amber-100 text-amber-800",
   arrived: "bg-emerald-100 text-emerald-800",
   completed: "bg-sky-100 text-sky-800",
   no_show: "bg-red-100 text-red-800",
@@ -23,8 +24,18 @@ const TONE: Record<ProStatus, string> = {
 
 function Chip({ status }: { status: ProStatus }) {
   const { t } = useT();
-  const label = status === "new" ? t("pa.status.new") : status === "arrived" ? t("arrival.ok") : status === "cancelled" ? t("pa.status.cancelled") : t(`pv.status.${status}`);
+  const label = status === "new" ? t("pa.status.new") : status === "arrived" ? t("pv.status.arrived") : status === "completed" ? t("pa.closed") : status === "cancelled" ? t("pa.status.cancelled") : t(`pv.status.${status}`);
   return <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE[status]}`}>{label}</span>;
+}
+
+function ArriveBox({ id }: { id: string }) {
+  const { t } = useT();
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button type="button" disabled={busy} onClick={async () => { setBusy(true); await fetch(`/api/pro/jobs/${id}/arrive`, { method: "POST" }); setBusy(false); }} className="mt-3 h-11 w-full rounded-xl">
+      {busy ? <Loader2 className="size-4 animate-spin" /> : t("pa.arrive.btn")}
+    </Button>
+  );
 }
 
 function CodeBox({ id }: { id: string }) {
@@ -46,8 +57,8 @@ function CodeBox({ id }: { id: string }) {
       <label htmlFor={`code-${id}`} className="text-sm font-semibold">{t("pa.enter_code")}</label>
       <p className="mt-0.5 text-xs text-foreground/75">{t("pa.code.help")}</p>
       <div className="mt-2 flex gap-2">
-        <Input id={`code-${id}`} inputMode="numeric" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder={t("pa.code.ph")} className="h-11 flex-1 text-center font-mono text-xl tracking-[0.4em]" />
-        <Button type="submit" disabled={busy || code.length !== 4} className="h-11 rounded-xl">{busy ? <Loader2 className="size-4 animate-spin" /> : t("pa.code.submit")}</Button>
+        <Input id={`code-${id}`} inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder={t("pa.code.ph")} className="h-11 flex-1 text-center font-mono text-xl tracking-[0.4em]" />
+        <Button type="submit" disabled={busy || code.length !== 6} className="h-11 rounded-xl">{busy ? <Loader2 className="size-4 animate-spin" /> : t("pa.code.submit")}</Button>
       </div>
       {result === "ok" && <p role="status" className="mt-2 text-sm font-semibold text-emerald-800">{t("pa.code.ok")}</p>}
       {result === "bad" && <p role="alert" className="mt-2 text-sm font-medium text-destructive">{t("pa.code.bad")}</p>}
@@ -111,8 +122,10 @@ function JobCard({ job }: { job: ProJob }) {
           {job.address ? <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" /> {job.address}, {job.sector}</p> : <p className="flex items-center gap-2 text-foreground/75"><Lock className="size-4" /> {t("pv.address.hidden")}</p>}
         </div>
       </div>
-      {job.arrived && <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-800"><Check className="size-4" /> {t("pa.code.ok")}</p>}
-      {job.can_enter_code && <CodeBox id={job.id} />}
+      {job.can_confirm_arrival && <ArriveBox id={job.id} />}
+      {job.status === "pro_arrived" && <p role="status" className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">{t("pa.arrive.wait")}</p>}
+      {job.can_enter_code && <><p className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-800"><Check className="size-4" /> {t("pa.arrive.verified")}</p><CodeBox id={job.id} /></>}
+      {job.completed && <p role="status" className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-base font-semibold text-emerald-900">{t("pa.closed")}</p>}
       {job.can_send_bill && <BillBox job={job} />}
       {job.bill && <p className="mt-3 text-sm">{t("pa.bill.title")}: ₹{job.bill.total.toLocaleString("en-IN")}</p>}
     </article>

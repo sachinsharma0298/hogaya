@@ -21,10 +21,11 @@ export async function bookNow(id: string, providerId: string, via: "fo_call" | "
       slot_exact: overrides?.slot ? overrides.slot_exact ?? json?.slot_exact : json?.slot_exact,
       provider_confirmed: true,
       visit_charge: json?.visit_charge ?? null,
-      arrival_code: String(Math.floor(1000 + Math.random() * 9000)),
+      arrival_code: "", // the completion code is issued only after the CUSTOMER confirms the Pro has arrived
       confirmed_via: via,
       booked_at: bookedAt,
       reconfirm_at: computeReconfirmAt(slot, bookedAt, r.time_window, r.created_at),
+      confirm_call_at: computeReconfirmAt(slot, bookedAt, r.time_window, r.created_at, 30, 10),
     };
     // Everyone who was matched but not chosen is "Not selected" (the next best stays on as the backup).
     r.not_selected = r.matched.filter((m) => m !== providerId);

@@ -17,7 +17,7 @@ import type { BookingState, HogayaRequest, Provider, ProviderCallJson } from "@/
 // Who does each step: Fo (the call) or Hogaya. Shown by the "Under the hood" switch.
 const HOOD: Partial<Record<BookingState, string>> = {
   requested: "matching", calling_providers: "calling_provider", options_ready: "shortlist_ready", calling_customer: "calling_customer",
-  customer_chose: "booking_provider", booking_provider: "booking_provider", booked: "booked", reconfirm_due: "booked", reconfirmed: "booked", arrived: "booked",
+  customer_chose: "booking_provider", booking_provider: "booking_provider", booked: "booked", reconfirm_due: "booked", reconfirmed: "booked", pro_arrived: "booked", arrived: "booked",
 };
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
@@ -79,9 +79,9 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
     : state === "booking_provider" || state === "customer_chose" ? t(b || r.calls.some((c) => c.kind === "booking" && ["calling", "waiting_summary"].includes(c.status)) ? "step.booking_provider" : "step.booking_waiting", { name: first || "…" })
     : "";
 
-  const heading = cancelled ? t("b.h.cancelled") : state === "completed" || state === "closed" ? t("b.h.done") : confirmed ? t("b.h.booked") : options.length ? t("b.h.options") : t("b.h.finding");
-  const canFinish = confirmed && !b!.job_done_at && !cancelled;
-  const needsRating = !!b?.job_done_at && !b.rating;
+  const heading = cancelled ? t("b.h.cancelled") : state === "completed" || state === "closed" ? t("b.done.final") : confirmed ? t("b.h.booked") : options.length ? t("b.h.options") : t("b.h.finding");
+  const canFinish = false; // the booking is now completed by the Pro submitting the code, not by a "Job done" button
+  const needsRating = b?.outcome === "completed" && !b.rating;
   const hoodKey = HOOD[state];
 
   return (
@@ -198,11 +198,28 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
               {r.customer_choice && <p className="mt-3 text-xs text-foreground/75">{r.customer_choice.via === "fo_call" ? t("bk.via_call") : t("bk.via_screen")}</p>}
             </div>
 
-            <div className="rounded-3xl bg-primary p-6 text-center text-primary-foreground">
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-90">{t("bk.code")}</p>
-              <p aria-label={`${t("bk.code")} ${b.arrival_code.split("").join(" ")}`} className="mt-2 pl-[0.25em] font-mono text-6xl font-bold tracking-[0.25em]">{b.arrival_code}</p>
-              <p className="mt-3 text-sm opacity-95">{t("bk.codehelp", { name: first })}</p>
-            </div>
+            {/* The Pro says they have arrived: the customer must confirm before any code exists. */}
+            {b.pro_arrived_at && !b.arrival_verified_at && (
+              <div role="status" className="rounded-3xl border-2 border-primary bg-accent/50 p-5">
+                <p className="text-base font-semibold">{t("b.pro_arrived.title", { name: first })}</p>
+                <p className="mt-1 text-sm">{t("b.pro_arrived.q", { name: first })}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <Button onClick={async () => { setBusy("arr"); await post("confirm-arrival", { arrived: true }); setBusy(null); }} disabled={busy !== null} className="h-11 rounded-xl">{t("b.pro_arrived.yes")}</Button>
+                  <Button onClick={async () => { setBusy("arr"); await post("confirm-arrival", { arrived: false }); setBusy(null); }} disabled={busy !== null} variant="outline" className="h-11 rounded-xl">{t("b.pro_arrived.no")}</Button>
+                </div>
+              </div>
+            )}
+
+            {/* The completion code appears only after the customer confirmed the arrival. */}
+            {b.arrival_verified_at && b.arrival_code && !b.job_done_at && (
+              <div className="rounded-3xl bg-primary p-6 text-center text-primary-foreground">
+                <p className="text-xs font-semibold uppercase tracking-widest opacity-90">{t("bk.code")}</p>
+                <p aria-label={`${t("bk.code")} ${b.arrival_code.split("").join(" ")}`} className="mt-2 pl-[0.25em] font-mono text-5xl font-bold tracking-[0.2em]">{b.arrival_code}</p>
+                <p className="mt-3 text-sm opacity-95">{t("bk.codehelp2", { name: first })}</p>
+              </div>
+            )}
+
+            {b.outcome === "completed" && <p role="status" className="rounded-2xl bg-emerald-50 px-4 py-3 text-base font-semibold text-emerald-900">{t("b.done.final")}</p>}
 
             {/* 5. Reconfirmed */}
             {b.reconfirmed_at ? (

@@ -26,7 +26,7 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
   // A person Hogaya approved as a customer (the operator too) has their number filled in from that record.
   const approvedPhone = existing?.phone || role === "pro" || !email ? undefined : (await findApprovedCustomerByEmail(email))?.phone;
   if (existing && existing.role === want.role && existing.provider_id === want.provider_id && !approvedPhone) return existing;
-  return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? `+91${approved.phone}` : approvedPhone ? `+91${approvedPhone}` : ""), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
+  return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? `+91${approved.phone}` : approvedPhone ? `+91${approvedPhone}` : String(au.user_metadata?.phone ?? "")), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
 }
 
 export async function getSessionUser(): Promise<User | undefined> {

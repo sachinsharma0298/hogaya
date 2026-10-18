@@ -17,7 +17,8 @@ export function activeIndex(state: BookingState): number {
     case "booking_provider": return 4;
     case "booked":
     case "reconfirm_due": return 5;
-    case "reconfirmed": return 6;
+    case "reconfirmed":
+    case "pro_arrived": return 6;
     case "arrived": return 7;
     case "completed":
     case "closed": return 8;

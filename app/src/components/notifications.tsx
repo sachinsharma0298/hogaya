@@ -5,7 +5,7 @@ import type { Notification } from "@/lib/types";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
-const ICON: Record<string, string> = { booked: "✓", backup: "↻", reconfirmed: "✓", arrived: "📍", bill: "🧾" };
+const ICON: Record<string, string> = { booked: "✓", backup: "↻", reconfirmed: "✓", pro_arrived: "📍", arrived: "✓", completed: "🎉", bill: "🧾" };
 
 function readSeen(key: string): string[] {
   try {

@@ -11,6 +11,9 @@
     "test:live-gate": "tsx scripts/test-live-gate.ts",
     "test:engine": "tsx scripts/test-engine.ts",
     "test:fo-poll": "tsx scripts/test-fo-poll.ts",
+    "operator:password": "tsx --env-file-if-exists=.env.local scripts/set-operator-password.ts",
+    "test:state": "tsx scripts/test-state.ts",
+    "test:flow": "tsx scripts/test-flow.ts",
     "test:db": "tsx scripts/test-db.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts"
   },

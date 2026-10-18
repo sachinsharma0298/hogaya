@@ -21,6 +21,22 @@ const enT = (key: string, vars?: Record<string, string | number>) => {
 const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply"];
 const phoneHint = (p?: string) => (p ? `•••• ${p.replace(/\D/g, "").slice(-4)}` : "no number");
 
+function RankBox({ r, onSave }: { r: HogayaRequest; onSave: (stars: number, note: string) => Promise<unknown> | void }) {
+  const [stars, setStars] = useState(r.booking?.ranking?.stars ?? 0);
+  const [note, setNote] = useState(r.booking?.ranking?.note ?? "");
+  return (
+    <section className="rounded-3xl border bg-card p-5">
+      <h2 className="text-sm font-semibold">Rank this Pro</h2>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" aria-pressed={stars === n} onClick={() => setStars(n)} className={`size-9 rounded-xl border text-sm font-semibold ${stars === n ? "border-primary bg-primary text-primary-foreground" : "bg-background"}`}>{n}</button>)}
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" aria-label="Ranking note" className="h-9 min-w-40 flex-1 rounded-xl border bg-background px-3 text-sm" />
+        <Button onClick={() => void onSave(stars, note)} disabled={stars === 0} variant="outline" className="h-9 rounded-xl text-xs">Save ranking</Button>
+      </div>
+      {r.booking?.ranking && <p className="mt-2 text-xs text-foreground/70">Saved: {r.booking.ranking.stars}/5 by {r.booking.ranking.by}</p>}
+    </section>
+  );
+}
+
 export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: ConsoleData; settings: ConsoleSettings }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
@@ -95,6 +111,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
             {r.manual
               ? <Button onClick={() => control("hand_back")} variant="outline" className="h-8 rounded-lg text-xs">Hand back to autopilot</Button>
               : <Button onClick={() => control("take_over")} variant="outline" className="h-8 rounded-lg text-xs">Take over manually</Button>}
+            {b?.arrival_verified_at && b.outcome !== "completed" && <Button onClick={() => control("new_code")} variant="outline" className="h-8 rounded-lg text-xs">New completion code</Button>}
             {flags.length > 0 && <Button onClick={() => control("clear_flags")} variant="outline" className="h-8 rounded-lg text-xs">Clear flags</Button>}
             <Button onClick={() => control("fast_forward")} variant="outline" disabled={!bookingActive || !!b?.reconfirmed_at} className="h-8 rounded-lg text-xs">Fast-forward to T–60 <DemoBadge /></Button>
             <Button onClick={() => { if (window.confirm("Cancel this booking? Nothing more will be called.")) void control("cancel"); }} variant="outline" disabled={ended} className="h-8 rounded-lg text-xs text-destructive">Cancel booking</Button>
@@ -109,14 +126,16 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
         <section className="rounded-3xl border bg-card p-5 text-sm">
           <h2 className="text-sm font-semibold">Booking</h2>
           <p className="mt-1">
-            <b>{nameOf(b.provider_id)}</b> · {b.slot}{b.slot_exact === false ? " (not exact)" : ""} · visit {b.visit_charge ?? "not confirmed"} · service code <b className="font-mono">{b.arrival_code}</b>
+            <b>{nameOf(b.provider_id)}</b> · {b.slot}{b.slot_exact === false ? " (not exact)" : ""} · visit {b.visit_charge ?? "not confirmed"} · completion code <b className="font-mono">{b.arrival_code || "not issued yet (the customer must confirm the arrival first)"}</b>{b.code_expires_at ? ` (expires ${new Date(b.code_expires_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}, wrong tries ${b.code_attempts ?? 0}/5)` : ""}
           </p>
           <p className="mt-1 text-xs text-foreground/70">
             Confirmed {r.customer_choice?.via === "fo_call" ? "on Fo's call" : r.customer_choice?.via === "screen" ? "on screen" : ""}
             {b.reconfirmed_at ? " · reconfirmed" : ""}{b.outcome ? ` · ${b.outcome === "completed" ? "completed" : "no-show"}` : ""}
             {b.provider_confirmed === false ? " · backup activated, not yet confirmed by a call" : ""}
           </p>
-          {b.arrival_verified_at && <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 font-semibold text-emerald-900">Arrival verified ✓</p>}
+          {b.pro_arrived_at && <p className="mt-2 text-xs">Pro said arrived at {new Date(b.pro_arrived_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</p>}
+          {b.arrival_verified_at && <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 font-semibold text-emerald-900">Customer confirmed the arrival ✓</p>}
+          {b.outcome === "completed" && <p className="mt-2 rounded-xl bg-sky-50 px-3 py-2 font-semibold text-sky-900">Completed: the Pro submitted the right code</p>}
           {b.arrival_flag && <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 font-semibold text-red-900">Arrival NOT verified: {b.arrival_flag}</p>}
           {b.bill && <p className="mt-2">Final bill: visit ₹{b.bill.visit_fee} + labour ₹{b.bill.labour} + parts ₹{b.bill.parts} = <b>₹{b.bill.total}</b></p>}
           {b.rating && <p className="mt-2">Customer rating: {"★".repeat(b.rating.stars)}{"☆".repeat(5 - b.rating.stars)}{b.rating.feedback ? ` · “${b.rating.feedback}”` : ""}</p>}
@@ -155,6 +174,24 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
         </section>
       )}
 
+      {/* Assign a Pro (before there is a booking) */}
+      {!b && !ended && (
+        <section className="rounded-3xl border bg-card p-5">
+          <h2 className="text-sm font-semibold">Assign a Pro</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select id="assign" aria-label="Pro to assign" defaultValue="" className="h-9 min-w-48 rounded-xl border bg-background px-2 text-sm">
+              <option value="" disabled>Choose a Pro…</option>
+              {data.providers.filter((p) => (p.categories ?? [p.category]).includes(r.category) && (r.demo ? p.demo : !p.demo)).map((p) => <option key={p.id} value={p.id}>{p.name}{p.demo ? " (simulated)" : ""}</option>)}
+            </select>
+            <Button onClick={() => { const v = (document.getElementById("assign") as HTMLSelectElement).value; if (v) void run("assign", "assign", { provider_id: v }, "Assigned. The flow restarts for this Pro."); }} variant="outline" className="h-9 rounded-xl text-xs">Assign and restart</Button>
+          </div>
+          <p className="mt-1 text-xs text-foreground/70">Only this Pro is called. A live booking can only take Pros on the approved list.</p>
+        </section>
+      )}
+
+      {/* Rank the Pro after a completed job */}
+      {b?.outcome === "completed" && <RankBox r={r} onSave={(stars, note) => run("rank", "rank", { stars, note }, "Ranking saved.")} />}
+
       {/* Step buttons */}
       <section className="rounded-3xl border bg-card p-5">
         <h2 className="text-sm font-semibold">Steps</h2>
@@ -162,11 +199,11 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
           <Button onClick={() => run("reconfirm", "reconfirm", undefined, "Started. Watch the timeline for progress.")} disabled={!bookingActive || inflight || busy !== null} className="rounded-xl">
             {busy === "reconfirm" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <RefreshCw className="mr-2 size-4" />} Reconfirm now {(r.demo || !cfg.realSteps.reconfirm) && <DemoBadge />}
           </Button>
-          <Button onClick={() => run("verify-arrival", "verify-arrival", undefined, "Started. Watch the timeline for progress.")} disabled={!bookingActive || !!b?.arrival_verified_at || inflight || busy !== null} variant="outline" className="rounded-xl">
-            {busy === "verify-arrival" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <ShieldCheck className="mr-2 size-4" />} Verify arrival {(r.demo || !cfg.realSteps.arrival) && <DemoBadge />}
+          <Button onClick={() => control("fast_forward_confirm")} disabled={!bookingActive || !!b?.on_the_way_at} variant="outline" className="rounded-xl">
+            <ShieldCheck className="mr-2 size-4" /> Fast-forward to T–30 (confirmation call) <DemoBadge />
           </Button>
           <Button onClick={() => run("check-on-way", "check-on-way", undefined, "Demo: checked.")} disabled={!bookingActive || inflight || busy !== null} variant="outline" className="rounded-xl">
-            <PhoneCall className="mr-2 size-4" /> Check on the way <DemoBadge />
+            <PhoneCall className="mr-2 size-4" /> Confirmation call now (simulated) <DemoBadge />
           </Button>
           <Button onClick={() => run("completed", "outcome", { outcome: "completed" }, "Recorded as completed.")} disabled={!b || !!b.outcome || busy !== null} variant="outline" className="rounded-xl"><CheckCircle2 className="mr-2 size-4" /> Mark completed</Button>
           <Button onClick={() => run("no_show", "outcome", { outcome: "no_show" }, "Recorded as a no-show.")} disabled={!b || !!b.outcome || busy !== null} variant="outline" className="rounded-xl"><UserX className="mr-2 size-4" /> Mark no-show</Button>

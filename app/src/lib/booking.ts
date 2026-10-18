@@ -1,5 +1,5 @@
 // Store-aware helpers for the booking state machine: transitions, holds (paused / flagged), flags and the safety rules.
-import { attemptCount, blockedReason, END_STATES, isHold, type CallSpec } from "./state";
+import { attemptCount, blockedReason, canMove, END_STATES, isHold, type CallSpec } from "./state";
 import { deriveState } from "./state";
 import { MODE } from "./mode";
 import { findUser, getProviders, getRequest, getSettings, isApproved, listRequests, updateRequest } from "./store";
@@ -12,6 +12,8 @@ const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply"];
 export async function transition(id: string, to: BookingState, note?: string) {
   await updateRequest(id, (r) => {
     if (r.state === "cancelled") return;
+    const from = isHold(r.state) ? r.prev_state ?? "requested" : r.state;
+    if (!canMove(from, to)) { r.events.push({ at: now(), text: `Blocked an invalid move: ${from} → ${to}` }); return; } // only valid transitions are ever saved
     if (isHold(r.state)) r.prev_state = to;
     else r.state = to;
     if (note) r.events.push({ at: now(), text: note });

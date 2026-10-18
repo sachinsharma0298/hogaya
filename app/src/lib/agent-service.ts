@@ -126,19 +126,27 @@ export function customerPhone(raw: string): string {
 /** How long a simulated call "takes", so the screens show their calling states. */
 const DEMO_DELAY_MS: Record<CallKind, number> = { provider: 2500, customer: 2500, booking: 2000, reconfirm: 2000, arrival: 2000, on_the_way: 1500 };
 
+/** Scripted outcomes for testing the simulated flow: put a tag such as [mock:pro_no_answer] in the problem text. */
+const mock = (job: CallJob, name: string) => new RegExp(`\\[mock:${name}\\]`).test(`${job.request?.problem ?? ""} ${job.request?.notes ?? ""}`);
+
 function demoResult(job: CallJob): { summary: string; json: unknown } {
   const p = job.provider;
   switch (job.kind) {
     case "provider": {
+      if (mock(job, "pro_no_answer")) return { summary: `Simulated: ${p!.name} did not pick up.`, json: { ...base, answered: false, can_do: null, status: "no_reply", notes: "" } };
+      if (mock(job, "pro_declines")) return { summary: `Simulated: ${p!.name} said they cannot come.`, json: { ...base, can_do: false, status: "declined", notes: "" } };
       const d = demoFor(p!);
       return { summary: d.summary, json: d.json };
     }
     case "customer":
+      if (mock(job, "customer_no_answer")) return { summary: "Simulated: the customer did not pick up.", json: { confirmed: null, preferred_option: null, notes: "" } satisfies CustomerCallJson };
+      if (mock(job, "customer_declines")) return { summary: "Simulated: the customer said no to every option.", json: { confirmed: false, preferred_option: null, notes: "" } satisfies CustomerCallJson };
       return {
         summary: `Fo told the customer that ${job.best!.provider.name} can come and gave the time and charges. The customer said yes, go ahead.`,
         json: { confirmed: true, preferred_option: job.best!.provider.name, notes: "Customer ne haan kaha." } satisfies CustomerCallJson,
       };
     case "booking":
+      if (mock(job, "booking_declines")) return { summary: `Simulated: ${p!.name} declined the booking.`, json: { confirmed: false, slot: null, notes: "" } satisfies BookingCallJson };
       return {
         summary: `Fo called ${p!.name}, confirmed the slot and visit charge, then shared the address. ${p!.name} confirmed he will come.`,
         json: { confirmed: true, slot: job.option?.slot ?? null, slot_exact: job.option?.slot_exact, notes: "Address shared after customer confirmed." } satisfies BookingCallJson,
