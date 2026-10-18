@@ -105,6 +105,7 @@ async function call<T = FoReply>(name: string, args: Record<string, unknown>): P
 
 export const askFo = (message: string, opts: { newConversation?: boolean; conversationId?: string } = {}) =>
   call("ask_fo", { message, ...opts });
+export const listFoConversations = () => call<Record<string, unknown>>("list_fo_conversations", {});
 export const getFoReply = (conversationId: string, waitSeconds = 40) => call("get_fo_reply", { conversationId, waitSeconds });
 
 export interface FoTurn {

@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
-import { askFo, getFoReply } from "@/lib/fo-mcp";
+import { askFo, getFoReply, listFoConversations } from "@/lib/fo-mcp";
 import { decideLive } from "@/lib/live";
 import { MODE } from "@/lib/mode";
 import { isSignedIn } from "@/lib/fo-mcp";
@@ -37,6 +37,18 @@ export async function GET(req: Request) {
         log.push(`get_fo_reply -> ${r.status}`);
       }
       return NextResponse.json({ ok: r.status === "complete", status: r.status, response: r.response, log, seconds: Math.round((Date.now() - started) / 1000) });
+    }
+    if (check === "fo_recent") {
+      const t0 = Date.now();
+      const r = await listFoConversations();
+      const list = ((r.conversations ?? r.items ?? r) as unknown[]) ?? [];
+      return NextResponse.json({ ms: Date.now() - t0, count: Array.isArray(list) ? list.length : null, recent: (Array.isArray(list) ? list : []).slice(0, 6).map((c) => JSON.stringify(c).slice(0, 220)) });
+    }
+    if (check === "fo_timing") {
+      // A LONG harmless message (no call, no email): how long does ask_fo take to answer?
+      const t0 = Date.now();
+      const r = await askFo("This is a connection test only. Please do NOT call anyone and do NOT send any email or text. Just reply with the single word ready. " + "Context: ".padEnd(1500, "x"), { newConversation: true });
+      return NextResponse.json({ ask_fo_ms: Date.now() - t0, status: r.status, progress: r.progress });
     }
     if (check === "claude") {
       if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ ok: false, error: "ANTHROPIC_API_KEY is not set" });
