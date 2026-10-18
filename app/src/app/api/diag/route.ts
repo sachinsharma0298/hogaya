@@ -38,6 +38,12 @@ export async function GET(req: Request) {
       }
       return NextResponse.json({ ok: r.status === "complete", status: r.status, response: r.response, log, seconds: Math.round((Date.now() - started) / 1000) });
     }
+    if (check === "sleep") {
+      // Proves how long a function may really run on this plan (waits, then answers). Harmless.
+      const secs = Math.min(120, Math.max(1, Number(new URL(req.url).searchParams.get("s") ?? 5)));
+      await new Promise((r) => setTimeout(r, secs * 1000));
+      return NextResponse.json({ ok: true, waited_seconds: secs });
+    }
     if (check === "fo_recent") {
       const t0 = Date.now();
       const r = await listFoConversations();
