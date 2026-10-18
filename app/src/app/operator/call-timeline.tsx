@@ -35,6 +35,7 @@ function result(c: CallRecord): { text: string; tone: "ok" | "bad" | "wait" | "n
   if (c.status === "calling") return { text: "Calling…", tone: "wait" };
   if (c.status === "waiting_summary") return { text: "Waiting for Fo's call summary…", tone: "wait" };
   if (c.status === "needs_reply") return { text: "Fo is asking you something", tone: "bad" };
+  if (c.status === "unconfirmed") return { text: "Call may be in progress (start not confirmed)", tone: "bad" };
   if (c.status === "failed") return { text: "Failed", tone: "bad" };
   if (c.status === "timed_out") return { text: "No summary yet", tone: "bad" };
   if (c.status === "needs_review") return { text: "Claude could not read it: read Fo's summary", tone: "bad" };
@@ -113,6 +114,12 @@ function CallRow({ c, post, replyText, setReplyText }: { c: CallRecord; post: (p
             </div>
           )}
           {(c.status === "timed_out" || c.status === "needs_review") && <Button onClick={() => post("check-again", { call_id: c.id })} variant="outline" className="rounded-xl">Check again</Button>}
+          {c.status === "unconfirmed" && (
+            <div className="space-y-2">
+              <p className="text-xs text-red-800">Hogaya will not send this call again. It is looking for it in Fo's history. If you have checked Fo and no call was placed, you can allow a retry.</p>
+              <Button onClick={() => { if (window.confirm("Only press this if Fo's history shows NO call was placed for this attempt. Otherwise a second call may reach the person.")) void post("control", { action: "clear_unconfirmed" }); }} variant="outline" className="rounded-xl">I checked Fo: no call was placed</Button>
+            </div>
+          )}
           {c.status === "failed" && c.progress && <p className="text-xs text-red-700">{c.progress}</p>}
         </div>
       )}

@@ -26,8 +26,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const get = async (j: Jar, id: string) => (await j.j<{ request: R }>(`/api/requests/${id}`)).body.request;
 async function until(j: Jar, id: string, what: string, ok: (r: R) => boolean, ms = 90_000) {
   const end = Date.now() + ms; let r = await get(j, id);
-  while (!ok(r) && Date.now() < end) { await sleep(1500); r = await get(j, id); }
-  assert.ok(ok(r), `${what} (state=${r.state}; flags=${JSON.stringify(r.flags.filter((f) => !f.resolved_at).map((f) => f.reason))}; calls=${r.calls.map((c) => c.kind + ":" + c.status).join(",")})`);
+  while (!ok(r) && Date.now() < end) {
+    // Live-style bookings are moved by the one-minute timer in real life (and by the open console): do what the timer does.
+    if (j.base === BASE) await fetch(`${BASE}/api/tick`, { method: "POST", headers: { authorization: "Bearer test-secret" } }).catch(() => {});
+    await sleep(1500); r = await get(j, id);
+  }
+  assert.ok(ok(r), `${what} (state=${r.state}; flags=${JSON.stringify(r.flags.filter((f) => !f.resolved_at).map((f) => f.reason))}; calls=${r.calls.map((c) => c.kind + ":" + c.status).join(",")}; last events=${r.events.slice(-4).map((e) => e.text).join(" / ")})`);
   return r;
 }
 const post = (j: Jar, id: string, path: string, json: unknown = {}) => j.j(`/api/requests/${id}/${path}`, { method: "POST", json });
@@ -252,6 +256,35 @@ async function rehearsal() {
   assert.ok(maxIn <= 1, `in flight at once: ${maxIn}`); assert.ok(r.calls.filter((c) => c.kind === "provider").length <= 4);
   assert.ok(new Set(r.calls.map((c) => `${c.kind}:${c.meta?.attempt}:${c.provider_id}`)).size === r.calls.length, "no duplicated call (same kind, attempt and person)");
   ok("retry safety: repeated clicks never start two calls at once and never duplicate a call or a booking");
+
+  // ---- a timeout is NOT proof that no call was placed: never resend, recover, retry only when sure
+  await O.j("/api/settings", { method: "POST", json: { autopilot: true } });
+  const idT = await live({ problem: "Fan broken [mock:ask_timeout]" });
+  r = await until(O, idT, "found after a timeout and booked", (x) => x.state === "booked", 120_000);
+  assert.equal(r.calls.filter((c) => c.kind === "provider").length, 1, "the request was NOT sent a second time");
+  assert.ok(r.events.some((e) => /found the call in Fo's history/.test(e.text)));
+  ok("timeout, Fo has it: marked 'may be in progress', found again, followed to the end, and sent exactly ONCE (never resent)");
+
+  const idL = await live({ problem: "Fan broken [mock:ask_timeout_lost]" });
+  r = await until(O, idL, "lost start retried", (x) => x.calls.filter((c) => c.kind === "provider").length >= 2, 120_000);
+  const first = r.calls.filter((c) => c.kind === "provider")[0];
+  assert.equal(first.status, "failed"); assert.ok(r.events.some((e) => /no call was placed, so it is safe to try again/.test(e.text)));
+  const attemptsSeen = r.calls.filter((c) => c.kind === "provider").map((c) => c.meta?.attempt);
+  assert.deepEqual(attemptsSeen.slice(0, 2), [1, 2]);
+  await post(O, idL, "control", { action: "cancel" });
+  ok("timeout, Fo's history proves nothing was placed: only THEN is the attempt retried");
+
+  const idU = await live({ problem: "Fan broken [mock:ask_timeout_unknown]" });
+  r = await until(O, idU, "unclear start waits for a person", (x) => x.calls.some((c) => c.status === "unconfirmed") && x.flags.some((f) => /cannot tell whether/.test(f.reason)), 60_000);
+  await sleep(6000);
+  r = await get(O, idU);
+  assert.equal(r.calls.filter((c) => c.kind === "provider").length, 1, "an unclear start is never retried by itself");
+  assert.equal((await post(Cb, idU, "control", { action: "clear_unconfirmed" })).status, 403);
+  assert.equal((await post(O, idU, "control", { action: "clear_unconfirmed" })).status, 200);
+  r = await until(O, idU, "retry only after the operator checked", (x) => x.calls.filter((c) => c.kind === "provider").length >= 2, 150_000);
+  assert.equal(r.calls.filter((c) => c.kind === "provider")[0].status, "failed");
+  await post(O, idU, "control", { action: "cancel" });
+  ok("timeout, cannot tell: never retried by itself; flagged; retried only after the operator says 'I checked Fo: no call was placed'");
 
   // authorization
   for (const [m, p] of [["POST", `/api/requests/${id}/rank`], ["POST", `/api/requests/${id}/assign`], ["POST", `/api/requests/${id}/control`]] as const) assert.equal((await P.j(p, { method: m, json: {} })).status, 403, `Pro on ${p}`);

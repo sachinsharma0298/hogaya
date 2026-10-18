@@ -7,11 +7,11 @@
 // use RealVoice, which really calls through Fo.
 import { DRY_RUN, MODE } from "./mode";
 import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type OfferedOption } from "./briefs";
-import { beginLiveCall, pollLiveCall, replyLiveCall, type Polled } from "./fo-poll";
+import { beginLiveCall, callMarker, pollLiveCall, recoverLiveCall, replyLiveCall, type Polled, type Recovery } from "./fo-poll";
 import { arrivalSummaryToJson, bookingSummaryToJson, customerSummaryToJson, reconfirmSummaryToJson, summaryToJson } from "./summarise";
 import type { ArrivalJson, BookingCallJson, CallKind, CallRecord, CustomerCallJson, HogayaRequest, Provider, ProviderCallJson } from "./types";
 
-export type { Polled };
+export type { Polled, Recovery };
 
 export interface JobInfo {
   category: string;
@@ -29,6 +29,7 @@ export interface Option {
 /** Everything a call needs, rebuilt from the booking each time (so a call can be started or checked in any request). */
 export interface CallJob {
   kind: CallKind;
+  callId?: string; // goes into the brief as an internal reference so a lost call can be found again
   request: HogayaRequest;
   provider?: Provider; // everything except the customer call
   best?: Option; second?: Option; reason?: string; // customer call
@@ -44,6 +45,8 @@ export interface VoiceProvider {
   poll(job: CallJob, call: CallRecord, waitSeconds: number): Promise<Polled>;
   reply(call: CallRecord, answer: string): Promise<void>;
   toJson(job: CallJob, summaryText: string): Promise<unknown>;
+  /** Only for agents that really call: find a call whose start was not confirmed. Never resends. */
+  recover?(call: CallRecord): Promise<Recovery>;
 }
 
 export const jobInfo = (r: HogayaRequest): JobInfo => ({ category: r.category, problem: r.problem, sector: r.sector, time_window: r.time_window, notes: r.notes });
@@ -190,6 +193,14 @@ class DemoVoice implements VoiceProvider {
 /** Rehearsal agent: behaves like the real one (real flags, live flow) but never calls Fo. For testing the autopilot safely. */
 class DryRunVoice extends DemoVoice {
   readonly real = REAL_STEPS;
+  // Test hooks for "the start of the call was not confirmed": [mock:ask_timeout] (Fo has it), [mock:ask_timeout_lost] (nothing placed), [mock:ask_timeout_unknown] (cannot tell)
+  async begin(job: CallJob): Promise<{ conversationId?: string; progress?: string }> {
+    if (/\[mock:ask_timeout/.test(job.request.problem)) throw new Error("Request timed out");
+    return { conversationId: `mock-${job.callId}` }; // a pretend Fo conversation (never a real one)
+  }
+  async recover(call: CallRecord): Promise<Recovery> {
+    return call.meta?.ask_tag === "unknown" ? { status: "ambiguous" } : call.meta?.ask_tag === "lost" ? { status: "lost" } : { status: "found", conversationId: "mock-conversation" };
+  }
   async toJson(job: CallJob, summaryText: string): Promise<unknown> {
     // Test hook: lets the rehearsal prove what happens when Claude fails (for example, credits run out).
     if (job.request.problem.includes("[claude-fail]")) throw new Error("simulated: Claude is unavailable");
@@ -243,7 +254,11 @@ function briefFor(job: CallJob): string {
 class RealVoice extends DemoVoice {
   readonly real = REAL_STEPS;
   async begin(job: CallJob) {
-    return beginLiveCall(briefFor(job));
+    // The reference tag lets us find this call in Fo's history if the answer to this request never reaches us.
+    return beginLiveCall(`${briefFor(job)}\n\n(Internal reference for Hogaya's records. Do not say it on the call: ${callMarker(job.callId ?? "none")})`);
+  }
+  async recover(call: CallRecord): Promise<Recovery> {
+    return recoverLiveCall(call);
   }
   async poll(job: CallJob, call: CallRecord, waitSeconds: number): Promise<Polled> {
     void job;

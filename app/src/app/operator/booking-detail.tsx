@@ -18,7 +18,7 @@ const enT = (key: string, vars?: Record<string, string | number>) => {
   return s;
 };
 
-const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply"];
+const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply", "unconfirmed"];
 const phoneHint = (p?: string) => (p ? `•••• ${p.replace(/\D/g, "").slice(-4)}` : "no number");
 
 function RankBox({ r, onSave }: { r: HogayaRequest; onSave: (stars: number, note: string) => Promise<unknown> | void }) {

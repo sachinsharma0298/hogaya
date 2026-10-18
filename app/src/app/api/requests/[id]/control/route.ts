@@ -71,6 +71,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       kick(id);
       break;
     }
+    case "clear_unconfirmed": {
+      // The operator checked Fo's history and no call was placed: only then may the attempt be tried again.
+      const stuck = r.calls.filter((c) => c.status === "unconfirmed");
+      if (stuck.length === 0) return fail("No call is waiting to be confirmed.");
+      await updateRequest(id, (x) => {
+        for (const c of x.calls) if (c.status === "unconfirmed") { c.status = "failed"; c.progress = "Operator checked Fo: no call was placed"; c.ended_at = now(); }
+        x.events.push({ at: now(), text: "Operator checked Fo's history: no call was placed. This attempt may be tried again." });
+      });
+      await resolveFlagsMatching(id, /may already be happening|cannot tell whether/);
+      kick(id);
+      break;
+    }
     case "new_code": {
       // Issue a fresh completion code (the old one stops working): for an expired or locked code. Only after the customer confirmed the arrival.
       const b = r.booking;

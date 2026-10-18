@@ -2,7 +2,7 @@
 //   begin -> ask_fo with the brief
 //   poll  -> ONE get_fo_reply (and, once Fo is on the call, ONE read of the conversation), then return
 // The tick engine (engine.ts) calls poll again a minute later (or sooner). Nothing here waits for minutes.
-import { askFo, getFoConversation, getFoReply, type FoReply, type FoTurn } from "./fo-mcp";
+import { askFo, getFoConversation, getFoReply, listFoConversations, type FoReply, type FoTurn } from "./fo-mcp";
 import type { CallKind, CallRecord } from "./types";
 
 export const WORKING_LIMIT_MS = 20 * 60_000; // Fo can work for 10+ minutes
@@ -24,6 +24,42 @@ const endsWithJson = (t: string) => /\{[\s\S]*\}\s*(```)?\s*$/.test(t.trim());
 export const looksLikeQuestion = (t: string) =>
   !endsWithJson(t) && (/\?\s*$/.test(t.trim()) || /\b(shall i|should i|do you want me to|say go|just say|confirm the intro|give the word)\b/i.test(t));
 
+/** The reference tag put at the end of every brief, so a call whose start we lost can be found again in Fo's history. */
+export const callMarker = (callId: string) => `HG-${callId}`;
+
+export type Recovery =
+  | { status: "wait" } // too early to say
+  | { status: "found"; conversationId: string } // Fo has the request: follow it, never resend
+  | { status: "lost" } // Fo's history shows NOTHING new since the call began: safe to try again
+  | { status: "ambiguous" }; // Fo has newer conversations that we cannot match: a person must check
+
+/**
+ * The start of a live call was not confirmed (timeout, or the server stopped). The call may already be happening, so we must
+ * NEVER send the request again. Look for it in Fo's history instead: every brief ends with an internal reference (HG-<call id>).
+ */
+export async function recoverLiveCall(call: CallRecord, api: FoApi = realApi): Promise<Recovery> {
+  const started = new Date(call.started_at).getTime();
+  const age = Date.now() - started;
+  if (age < 45_000) return { status: "wait" }; // the original request may still be answering
+  let items: { conversationId: string; channel?: string; startedAt: string }[] = [];
+  try {
+    const r = await api.listFoConversations();
+    items = ((r.conversations ?? r.items ?? []) as typeof items) ?? [];
+  } catch {
+    return { status: "wait" }; // cannot see Fo's history right now: that is not proof of anything
+  }
+  const newer = items.filter((c) => new Date(c.startedAt).getTime() >= started - 15_000).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const marker = callMarker(call.id);
+  for (const c of newer.filter((x) => (x.channel ?? "chat") === "chat").slice(0, 6)) {
+    try {
+      const turns = (await api.getFoConversation(c.conversationId)).turns;
+      if (turns.some((t) => t.text.includes(marker))) return { status: "found", conversationId: c.conversationId };
+    } catch { /* try the next one */ }
+  }
+  if (newer.length === 0) return age >= 5 * 60_000 ? { status: "lost" } : { status: "wait" };
+  return age >= 10 * 60_000 ? { status: "ambiguous" } : { status: "wait" };
+}
+
 export type Polled =
   | { status: "working"; progress?: string }
   | { status: "waiting"; baseline: number } // Fo is on the call: the next NEW message from Fo is the summary
@@ -37,8 +73,9 @@ export interface FoApi {
   askFo: (message: string, opts?: { newConversation?: boolean; conversationId?: string }) => Promise<FoReply>;
   getFoReply: (conversationId: string, waitSeconds?: number) => Promise<FoReply>;
   getFoConversation: (conversationId: string) => Promise<{ turns: FoTurn[] }>;
+  listFoConversations: () => Promise<Record<string, unknown>>;
 }
-const realApi: FoApi = { askFo, getFoReply, getFoConversation };
+const realApi: FoApi = { askFo, getFoReply, getFoConversation, listFoConversations };
 
 const assistantTurns = async (api: FoApi, conversationId: string) => (await api.getFoConversation(conversationId)).turns.filter((t) => t.role === "assistant");
 
@@ -61,8 +98,7 @@ export async function replyLiveCall(conversationId: string, answer: string, api:
 export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: FoApi = realApi): Promise<Polled> {
   const conv = call.fo_conversation_id;
   const now = Date.now();
-  // No conversation id yet: the call is still being started (ask_fo has not answered). Give it 5 minutes before giving up.
-  if (!conv) return now - new Date(call.started_at).getTime() < 300_000 ? { status: "working" } : { status: "failed", error: "Fo did not confirm the call started (no conversation)" };
+  if (!conv) return { status: "working" }; // the engine recovers a call with no conversation id (it never resends)
 
   if (call.status === "waiting_summary") {
     const baseline = call.meta?.baseline ?? 1;

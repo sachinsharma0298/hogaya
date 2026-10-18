@@ -83,7 +83,7 @@ export interface CallRecord {
   kind: CallKind;
   provider_id?: string;
   provider_name?: string;
-  status: "calling" | "waiting_summary" | "needs_reply" | "timed_out" | "needs_review" | "failed" | "done";
+  status: "calling" | "waiting_summary" | "needs_reply" | "unconfirmed" | "timed_out" | "needs_review" | "failed" | "done"; // unconfirmed: Fo may already be phoning (the start was not confirmed): never resent
   started_at: string;
   ended_at?: string; // when the call finished (done, failed or timed out)
   fo_conversation_id?: string; // internal, never shown to users
@@ -105,6 +105,7 @@ export interface CallMeta {
   recipient?: string; // who is phoned: "pro" or "customer" (the mock-call log)
   recipient_name?: string;
   attempt?: number; // 1, 2, ... for this person and step
+  ask_tag?: string; // test hook only (rehearsal)
 }
 
 export type StepKey =

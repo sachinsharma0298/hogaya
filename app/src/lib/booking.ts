@@ -6,7 +6,7 @@ import { findUser, getProviders, getRequest, getSettings, isApproved, listReques
 import type { BookingState, HogayaRequest, NotifyKind } from "./types";
 
 const now = () => new Date().toISOString();
-const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply"];
+const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply", "unconfirmed"];
 
 /** Move to a state. A paused or flagged booking only remembers where to resume; a cancelled one never moves. */
 export async function transition(id: string, to: BookingState, note?: string) {

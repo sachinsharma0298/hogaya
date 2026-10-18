@@ -233,7 +233,7 @@ export async function patchCall(requestId: string, callId: string, patch: Partia
 
 /** True while any live call is still running or waiting for the operator. */
 export async function hasActiveLiveCall(): Promise<boolean> {
-  return (await q("select 1 from calls where not demo and status in ('calling','waiting_summary','needs_reply') limit 1")).length > 0;
+  return (await q("select 1 from calls where not demo and status in ('calling','waiting_summary','needs_reply','unconfirmed') limit 1")).length > 0;
 }
 
 /** Erase all bookings and call records (operator only). Accounts, Pros, approved numbers and the Fo sign-in are kept. */

@@ -10,7 +10,7 @@
 // Who calls it: a timer every minute (POST /api/tick, see docs), the operator console while it is open,
 // and the customer's own booking page for simulated (demo) bookings.
 import { agentForCall, getAgent, jobInfo, type CallJob, type Option, type VoiceProvider } from "./agent-service";
-import { autoRuns, autopilotActive, callBlockedReason, flagBooking, resolveLatestFlag, transition } from "./booking";
+import { autoRuns, autopilotActive, callBlockedReason, flagBooking, resolveFlagsMatching, resolveLatestFlag, transition } from "./booking";
 import { approvedPros } from "./live";
 import { DRY_RUN } from "./mode";
 import {
@@ -110,6 +110,7 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
   if (g !== "ok") return g;
 
   const callId = `c-${Math.random().toString(36).slice(2, 8)}`;
+  job.callId = callId;
   const target = kind === "customer" ? job.best!.provider : job.provider!;
   try {
     await updateRequest(id, (x) => {
@@ -119,6 +120,7 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
           ...(kind === "reconfirm" ? { simulate, ask_exact: job.askExactTime } : {}),
           recipient: kind === "customer" ? "customer" : "pro", recipient_name: kind === "customer" ? r.customer.name : target.name, // the mock-call log
           attempt: attemptCount(r, { kind: kind as never, providerId: target.id }) + 1,
+          ...(DRY_RUN && /\[mock:ask_timeout_lost\]/.test(r.problem) ? { ask_tag: "lost" } : DRY_RUN && /\[mock:ask_timeout_unknown\]/.test(r.problem) ? { ask_tag: "unknown" } : {}),
         },
       });
       if (kind === "provider") {
@@ -143,9 +145,23 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
     await patchCall(id, callId, { fo_conversation_id: out.conversationId, progress: out.progress });
     return "started";
   } catch (e) {
-    await failCall(id, callId, kind, e);
-    return "failed";
+    // A timeout or a dropped connection does NOT mean no call was placed: Fo may already be phoning. So we never send it again.
+    // Only a clear "not signed in" proves nothing was sent.
+    if (/not signed in|unauthori[sz]ed/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`)) { await failCall(id, callId, kind, e); return "failed"; }
+    await markUnconfirmed(id, callId, kind, errText(e));
+    return "started";
   }
+}
+
+/** The start of a call was not confirmed. It stays on the single live line; it is followed up (found in Fo's history), never resent. */
+async function markUnconfirmed(id: string, callId: string, kind: StartKind, why: string) {
+  const c = (await getRequest(id))?.calls.find((x) => x.id === callId);
+  if (c?.status !== "unconfirmed") {
+    await patchCall(id, callId, { status: "unconfirmed", progress: `Call may be in progress: the start was not confirmed (${why})` });
+    await log(id, `${LABEL[kind]}: Fo did not confirm the start (${why}). The call MAY already be happening, so it will NOT be sent again. Looking for it in Fo's history.`);
+  }
+  const r = await getRequest(id);
+  if (!r?.flags.some((f) => !f.resolved_at && /may already be happening/.test(f.reason))) await flagBooking(id, "A call may already be happening: Fo did not confirm the start. It will not be sent again; Hogaya is looking for it in Fo's history", { halt: false });
 }
 
 // ---- when a call ends badly ---------------------------------------------------------------------------------
@@ -246,6 +262,30 @@ async function pollCall(r: HogayaRequest, c: CallRecord, deadline: number): Prom
     await resolveLatestFlag(id);
     return true;
   }
+  // A real call whose start was never confirmed: look for it in Fo's history. NEVER send it again from here.
+  if (agent.recover && !c.fo_conversation_id && ["calling", "unconfirmed"].includes(c.status)) {
+    const rec = await agent.recover(c);
+    if (rec.status === "found") {
+      await patchCall(id, c.id, { fo_conversation_id: rec.conversationId, status: "calling", progress: undefined });
+      await log(id, `${LABEL[kind]}: found the call in Fo's history. Following it (nothing was sent again).`);
+      await resolveFlagsMatching(id, /may already be happening|cannot tell whether/);
+      return true;
+    }
+    if (rec.status === "lost") {
+      await patchCall(id, c.id, { status: "failed", progress: "Fo's history shows no call was placed" });
+      await log(id, `${LABEL[kind]}: Fo's history shows no call was placed, so it is safe to try again.`);
+      await resolveFlagsMatching(id, /may already be happening/);
+      return true;
+    }
+    if (rec.status === "ambiguous") {
+      if (c.status !== "unconfirmed") await markUnconfirmed(id, c.id, kind, "unclear");
+      const cur = await getRequest(id);
+      if (!cur?.flags.some((f) => !f.resolved_at && /cannot tell whether/.test(f.reason))) await flagBooking(id, "Hogaya cannot tell whether Fo placed this call. Check Fo's history; if NO call was placed, press \"I checked Fo: no call was placed\" in the timeline");
+      return false;
+    }
+    if (c.status === "calling" && Date.now() - new Date(c.started_at).getTime() > 60_000) await markUnconfirmed(id, c.id, kind, "no answer yet");
+    return false;
+  }
   const job = await buildJob(r, kind, kind === "customer" ? undefined : c.provider_id, Boolean(c.meta?.simulate));
   if (!job) { await patchCall(id, c.id, { status: "failed", progress: "The booking changed" }); return true; }
   const waitSeconds = Math.max(1, Math.min(20, Math.floor((deadline - Date.now()) / 1000) - 5));
@@ -259,7 +299,7 @@ async function pollCall(r: HogayaRequest, c: CallRecord, deadline: number): Prom
   switch (p.status) {
     case "working":
       if (p.progress !== c.progress) await patchCall(id, c.id, { progress: p.progress });
-      if (!c.fo_conversation_id) { await sleep(Math.min(700, Math.max(0, deadline - Date.now()))); return true; } // a simulated call: wait a moment and look again
+      if (!c.fo_conversation_id || c.fo_conversation_id.startsWith("mock-")) { await sleep(Math.min(700, Math.max(0, deadline - Date.now()))); return true; } // a simulated call: wait a moment and look again
       return false;
     case "waiting":
       await patchCall(id, c.id, { status: "waiting_summary", progress: undefined, meta: { ...c.meta, baseline: p.baseline, waiting_since: now() } });
@@ -377,7 +417,7 @@ async function plan(r: HogayaRequest): Promise<Action | null> {
 async function stepOnce(id: string, deadline: number): Promise<boolean> {
   const r = await getRequest(id);
   if (!r) return false;
-  const inflight = r.calls.find((c) => ["calling", "waiting_summary", "needs_reply"].includes(c.status));
+  const inflight = r.calls.find((c) => ["calling", "waiting_summary", "needs_reply", "unconfirmed"].includes(c.status));
   if (inflight) {
     if (r.state === "cancelled") { await patchCall(id, inflight.id, { status: "failed", progress: "Booking cancelled" }); return true; }
     return pollCall(r, inflight, deadline);

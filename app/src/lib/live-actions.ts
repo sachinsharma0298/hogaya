@@ -14,7 +14,7 @@ const now = () => new Date().toISOString();
 const log = async (id: string, text: string) => await updateRequest(id, (r) => void r.events.push({ at: now(), text }));
 export const jobOf = (r: HogayaRequest): JobInfo => ({ category: r.category, problem: r.problem, sector: r.sector, time_window: r.time_window, notes: r.notes });
 
-const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply"];
+const IN_FLIGHT = ["calling", "waiting_summary", "needs_reply", "unconfirmed"];
 export const hasCallInFlight = (r: HogayaRequest) => r.calls.some((c) => IN_FLIGHT.includes(c.status));
 
 /** Providers who actually confirmed, ranked: exact time first, then reliability, then lower visit charge. */
