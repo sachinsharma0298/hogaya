@@ -379,7 +379,8 @@ async function stepOnce(id: string, deadline: number): Promise<boolean> {
 
 /** Move one booking forward, in short runs. Safe to call from anywhere, any number of times: the booking's lock keeps it to one tick at a time. */
 export async function tickBooking(id: string, budgetMs = MAX_TICK_MS): Promise<{ ran: boolean; steps: number }> {
-  if (!(await lockRequest(id, Math.ceil(budgetMs / 1000) + 20))) return { ran: false, steps: 0 };
+  const token = await lockRequest(id, Math.ceil(budgetMs / 1000) + 20);
+  if (!token) return { ran: false, steps: 0 };
   const deadline = Date.now() + budgetMs;
   let steps = 0;
   try {
@@ -390,7 +391,7 @@ export async function tickBooking(id: string, budgetMs = MAX_TICK_MS): Promise<{
   } catch (e) {
     await log(id, `Tick error: ${errText(e)}`).catch(() => {});
   } finally {
-    await unlockRequest(id).catch(() => {});
+    await unlockRequest(id, token).catch(() => {});
   }
   return { ran: true, steps };
 }

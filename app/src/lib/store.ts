@@ -385,11 +385,14 @@ export async function requestCounts(customerId?: string): Promise<{ mine: number
 // ---- tick locks --------------------------------------------------------------------------------------------
 
 /** Take the booking's lock for a short while. False if another tick already holds it. The lock expires by itself. */
-export async function lockRequest(id: string, seconds = 60): Promise<boolean> {
-  return (await q("update requests set lock_until = now() + ($2::int * interval '1 second') where id=$1 and (lock_until is null or lock_until < now()) returning id", [id, seconds])).length > 0;
+export async function lockRequest(id: string, seconds = 60): Promise<string | null> {
+  const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const ok = (await q("update requests set lock_until = now() + ($2::int * interval '1 second'), lock_token = $3 where id=$1 and (lock_until is null or lock_until < now()) returning id", [id, seconds, token])).length > 0;
+  return ok ? token : null;
 }
-export async function unlockRequest(id: string) {
-  await q("update requests set lock_until = null where id=$1", [id]);
+/** Release the lock, but only if it is still OURS (a late leftover request must never free another tick's lock). */
+export async function unlockRequest(id: string, token: string) {
+  await q("update requests set lock_until = null, lock_token = null where id=$1 and lock_token = $2", [id, token]);
 }
 /** Bookings a tick may need to look at, oldest first (that order is also the queue for the one live-call line). */
 export async function listTickIds(): Promise<string[]> {
