@@ -7,11 +7,14 @@ import readline from "node:readline";
 (async () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY, email = (process.env.OPERATOR_EMAIL ?? "").toLowerCase();
   if (!url || !key || !email) { console.error("Set NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and OPERATOR_EMAIL first."); process.exit(1); }
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput = () => {}; // hide typing
-  process.stdout.write(`New password for ${email} (8+ characters): `);
-  const pw: string = await new Promise((r) => rl.question("", r));
-  rl.close(); process.stdout.write("\n");
+  let pw = process.env.HOGAYA_NEW_PASSWORD ?? ""; // the helper script passes it in after a hidden prompt
+  if (!pw) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput = () => {}; // hide typing
+    process.stdout.write(`New password for ${email} (8+ characters): `);
+    pw = await new Promise<string>((r) => rl.question("", r));
+    rl.close(); process.stdout.write("\n");
+  }
   if (pw.length < 8 || pw.length > 72) { console.error("The password needs 8 to 72 characters."); process.exit(1); }
   const admin = createClient(url, key, { auth: { persistSession: false } });
   const list = await admin.auth.admin.listUsers({ perPage: 1000 });
