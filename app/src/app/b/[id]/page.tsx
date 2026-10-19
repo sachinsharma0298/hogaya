@@ -2,7 +2,7 @@
 import { use, useState } from "react";
 import { CalendarClock, Check, CheckCheck, Loader2, Lock, MapPin, ShieldCheck, Star } from "lucide-react";
 import { CustomerShell, DemoBadge, StateBox } from "@/components/brand";
-import { NotificationBell } from "@/components/notifications";
+import { NotificationBell, NotificationToast } from "@/components/notifications";
 import { OptionsTable, type OptionRow } from "@/components/options-table";
 import { Tracker } from "@/components/tracker";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   return (
     <CustomerShell right={<NotificationBell requestId={id} items={r.notifications ?? []} t={t} />}>
       <div className="pb-28 md:pb-0">
+        <NotificationToast items={r.notifications ?? []} t={t} />
         <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
         {r.demo && (
           <div role="note" className="mt-3 rounded-2xl border-2 border-dashed border-primary/50 bg-accent/50 px-4 py-3">

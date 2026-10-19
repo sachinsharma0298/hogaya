@@ -15,22 +15,34 @@ function readSeen(key: string): string[] {
   }
 }
 
-/** Bell with an unread count and a list, plus a short toast for a notification that has just arrived. */
-export function NotificationBell({ requestId, items, t }: { requestId: string; items: Notification[]; t: T }) {
-  const key = `hogaya-seen-${requestId}`;
-  const [seen, setSeen] = useState<string[]>(() => readSeen(key));
-  const [open, setOpen] = useState(false);
+/** A short message for a notification that has just arrived. It sits in the page's normal flow, above the content, so it never covers a heading or a button. */
+export function NotificationToast({ items, t }: { items: Notification[]; t: T }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+  const latest = items[items.length - 1];
+  const toast = latest && now - new Date(latest.at).getTime() < 8000 && !dismissed.includes(latest.id) ? latest : null;
+  if (!toast) return null;
+  return (
+    <div role="status" className="mb-4 flex items-start gap-3 rounded-2xl bg-foreground px-4 py-3 text-sm text-background shadow-md">
+      <span aria-hidden>{ICON[toast.kind]}</span>
+      <span className="flex-1 font-medium">{t(`n.${toast.kind}`, toast.vars ?? {})}</span>
+      <button type="button" onClick={() => setDismissed((d) => [...d, toast.id])} aria-label="Dismiss"><X className="size-4" /></button>
+    </div>
+  );
+}
+
+/** Bell with an unread count and a list. The toast is shown separately by NotificationToast. */
+export function NotificationBell({ requestId, items, t }: { requestId: string; items: Notification[]; t: T }) {
+  const key = `hogaya-seen-${requestId}`;
+  const [seen, setSeen] = useState<string[]>(() => readSeen(key));
+  const [open, setOpen] = useState(false);
 
   const text = (n: Notification) => t(`n.${n.kind}`, n.vars ?? {});
   const unread = items.filter((n) => !seen.includes(n.id)).length;
-  const latest = items[items.length - 1];
-  const toast = latest && now - new Date(latest.at).getTime() < 8000 && !dismissed.includes(latest.id) ? latest : null;
 
   function toggle() {
     const next = !open;
@@ -64,13 +76,6 @@ export function NotificationBell({ requestId, items, t }: { requestId: string; i
           </div>
         )}
       </div>
-      {toast && (
-        <div role="status" className="fixed inset-x-0 top-3 z-[60] mx-auto flex w-[calc(100%-2rem)] max-w-[520px] items-start gap-3 rounded-2xl bg-foreground px-4 py-3 text-sm text-background shadow-xl">
-          <span aria-hidden>{ICON[toast.kind]}</span>
-          <span className="flex-1 font-medium">{text(toast)}</span>
-          <button type="button" onClick={() => setDismissed((d) => [...d, toast.id])} aria-label="Dismiss"><X className="size-4" /></button>
-        </div>
-      )}
     </>
   );
 }

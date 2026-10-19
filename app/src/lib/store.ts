@@ -349,7 +349,7 @@ export async function addApproved(a: { phone: string; kind: "pro" | "customer"; 
   const phone = last10(a.phone);
   const row = (await q(
     `insert into approved_numbers (phone, kind, name, email, consent_at, added_by, note) values ($1,$2,$3,$4,coalesce(($5::date)::timestamp at time zone 'UTC', now()),$6,$7)
-     on conflict (phone) do update set kind=excluded.kind, name=excluded.name, email=excluded.email, consent_at=excluded.consent_at, added_by=excluded.added_by, note=excluded.note
+     on conflict (phone, kind) do update set name=excluded.name, email=excluded.email, consent_at=excluded.consent_at, added_by=excluded.added_by, note=excluded.note
      returning *`,
     [phone, a.kind, a.name, (a.email ?? "").toLowerCase(), a.consent_at?.slice(0, 10) ?? null, a.added_by, a.note ?? ""]))[0];
   await q("insert into consents (subject_kind, subject_id, phone, consented_at, channel, recorded_by) values ($1,$2,$3,coalesce(($4::date)::timestamp at time zone 'UTC', now()),$5,$6)",
