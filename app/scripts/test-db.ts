@@ -128,9 +128,11 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   // operator profile: default name Virat; the operator's phone lives in settings, so it never blocks a Pro or customer using that number
   assert.deepEqual(await store.getOperatorProfile(), { name: "Virat", phone: "" });
   await store.saveOperatorProfile("Asha", "9000000001");
-  assert.deepEqual(await store.getOperatorProfile(), { name: "Asha", phone: "9000000001" });
+  assert.deepEqual(await store.getOperatorProfile(), { name: "Asha", phone: "+919000000001" });
   assert.equal((await (await getDb()).query("select 1 from profiles where phone like '%9000000001'")).length, 0);
   console.log("ok  operator profile: default name, edits saved, phone not stored on a profile");
+  assert.ok(await store.isOperatorPhone("9000000001")); assert.ok(!(await store.isOperatorPhone("9000000002")));
+  console.log("ok  the operator's phone is reserved");
   const approvedBefore = (await store.listApproved()).length;
   assert.ok(approvedBefore > 0);
   const gone = await store.resetAllData();

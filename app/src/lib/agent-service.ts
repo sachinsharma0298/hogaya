@@ -6,6 +6,7 @@
 // Demo bookings use DemoVoice (simulated calls, nobody is phoned). Live bookings (approved numbers only, see lib/live.ts)
 // use RealVoice, which really calls through Fo.
 import { DRY_RUN, MODE } from "./mode";
+import { canonPhone } from "./phone";
 import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type OfferedOption } from "./briefs";
 import { beginLiveCall, callMarker, pollLiveCall, recoverLiveCall, replyLiveCall, type Polled, type Recovery } from "./fo-poll";
 import { arrivalSummaryToJson, bookingSummaryToJson, customerSummaryToJson, reconfirmSummaryToJson, summaryToJson } from "./summarise";
@@ -114,12 +115,10 @@ function phoneFor(p: Provider): string {
   return customerPhone(p.phone);
 }
 
-/** The customer's number from the request form: 10 digits means India (+91). */
+/** The number to dial, in full E.164 form: a bare 10-digit number means India (+91). */
 export function customerPhone(raw: string): string {
-  const n = normalizePhone(raw);
-  if (/^\d{10}$/.test(n)) return `+91${n}`;
-  if (/^91\d{10}$/.test(n)) return `+${n}`;
-  if (/^\+\d{11,14}$/.test(n)) return n;
+  const e = canonPhone(raw);
+  if (/^\+\d{8,15}$/.test(e)) return e; // always the full E.164 number
   throw new Error("The customer's phone number does not look valid");
 }
 

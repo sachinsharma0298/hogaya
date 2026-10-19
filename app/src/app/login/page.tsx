@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Loader2, MailCheck, ShieldAlert } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
+import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useT } from "@/lib/lang";
@@ -106,7 +107,7 @@ function LoginForm() {
             {mode === "create" && (
               <>
                 <div className="space-y-1.5"><Label htmlFor="name">{t("login.name")}</Label><Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-base" /></div>
-                <div className="space-y-1.5"><Label htmlFor="phone">{t("login.phone")}</Label><Input id="phone" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 text-base" /><p className="text-xs text-foreground/70">{t("login.phone.note")}</p></div>
+                <div className="space-y-1.5"><Label htmlFor="phone">{t("login.phone")}</Label><PhoneField id="phone" value={phone} onChange={setPhone} className="h-11 text-base" /><p className="text-xs text-foreground/70">{t("login.phone.note")}</p></div>
               </>
             )}
             <div className="space-y-1.5">

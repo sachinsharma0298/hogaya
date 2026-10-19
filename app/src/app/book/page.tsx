@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useT } from "@/lib/lang";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -206,7 +207,7 @@ function BookForm({ user }: { user: SessionUser }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">{t("f.phone")}</Label>
-              <Input id="phone" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set("phone")} placeholder="98xxxxxxxx" className="h-11 text-base" />
+              <PhoneField id="phone" value={f.phone} onChange={(v) => setF((p) => ({ ...p, phone: v }))} className="h-11 text-base" />
             </div>
             <label className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-[15px] leading-snug text-foreground">
               <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />

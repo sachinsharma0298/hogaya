@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/lib/categories";
 import type { Provider } from "@/lib/types";
+import { FO_COUNTRY_WARNING, foMayCall } from "@/lib/phone";
 import { catLabel } from "./booking-list";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -39,7 +41,7 @@ function OnboardForm() {
       <h2 className="text-base font-semibold">Onboard a Pro</h2>
       <p className="text-xs text-foreground/80">No KYC. You record who they are, how to reach them and that they agreed to AI calls.</p>
       <div className="space-y-1.5"><Label htmlFor="pr-name">Name</Label><Input id="pr-name" value={f.name} onChange={set("name")} /></div>
-      <div className="space-y-1.5"><Label htmlFor="pr-phone">Phone (10 digits)</Label><Input id="pr-phone" inputMode="tel" value={f.phone} onChange={set("phone")} /></div>
+      <div className="space-y-1.5"><Label htmlFor="pr-phone">Phone</Label><PhoneField id="pr-phone" value={f.phone} onChange={(v) => setF((p) => ({ ...p, phone: v }))} /></div>
       <div className="space-y-1.5">
         <Label htmlFor="pr-email">Email they sign in with</Label>
         <Input id="pr-email" type="email" value={f.email} onChange={set("email")} />
@@ -110,6 +112,7 @@ export function ProvidersTab({ providers }: { providers: Provider[] }) {
                 </div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${p.reliability}%` }} /></div>
                 <p className="mt-2 text-xs text-foreground/70">{p.on_time_pct}% on time · {p.jobs} jobs · {p.no_shows ?? 0} no-shows · •••• {p.phone.slice(-4)} · {p.email}</p>
+                {!foMayCall(p.phone) && <p className="mt-1 text-xs font-medium text-amber-800">⚠ {FO_COUNTRY_WARNING}: calls to this Pro will not be sent.</p>}
                 <button type="button" onClick={() => toggleCalls(p)} className="mt-2 rounded-lg border px-2 py-1 text-[11px] font-medium hover:bg-muted">{p.opt_out ? "Allow AI calls again" : "Pause AI calls"}</button>
                 <button type="button" onClick={() => remove(p)} className="ml-2 mt-2 rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10">Delete</button>
               </li>

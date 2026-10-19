@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const phone = String(b.phone ?? "").trim();
   let user: User | undefined;
   if (b.role === "customer") {
-    if (!name || !validPhone(phone)) return NextResponse.json({ error: "Enter a name and a 10-digit phone." }, { status: 400 });
+    if (!name || !validPhone(phone)) return NextResponse.json({ error: "Enter a name and a valid phone." }, { status: 400 });
     user = (await findUserByPhone("customer", phone)) ?? { id: crypto.randomUUID(), role: "customer", name, phone, created_at: new Date().toISOString() };
     const email = String(b.email ?? "").trim().toLowerCase() || user.email || `${user.id}@local.test`;
     user = await mk({ ...user, name, email });

@@ -2,6 +2,7 @@
 import { attemptCount, blockedReason, canMove, END_STATES, isHold, type CallSpec } from "./state";
 import { deriveState } from "./state";
 import { MODE } from "./mode";
+import { canonPhone, FO_COUNTRY_WARNING, foMayCall, phoneCountry } from "./phone";
 import { findUser, getProviders, getRequest, getSettings, isApproved, listRequests, updateRequest } from "./store";
 import type { BookingState, HogayaRequest, NotifyKind } from "./types";
 
@@ -102,6 +103,9 @@ export async function callBlockedReason(id: string, spec: CallSpec, live: boolea
   const base = blockedReason(r, spec, provider);
   if (base) return base;
   if (live) {
+    // Fo is only known to call some countries (see NEXT_PUBLIC_FO_CALL_COUNTRIES): never send a call it may not place.
+    const target = spec.kind === "customer" ? r.customer.phone : provider?.phone ?? "";
+    if (target && !foMayCall(canonPhone(target))) return `${FO_COUNTRY_WARNING}: ${phoneCountry(canonPhone(target)) ?? "unknown country"}. This call was not sent.`;
     // Live calls only ever reach numbers on the approved list, checked again right before every call.
     if (spec.kind === "customer") {
       const email = r.customer.user_id ? (await findUser(r.customer.user_id))?.email : undefined;

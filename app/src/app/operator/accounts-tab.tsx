@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
+import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePoll } from "@/lib/use-poll";
@@ -46,7 +47,7 @@ export function AccountsTab() {
         </div>
         <div className="space-y-1.5"><Label htmlFor="ac-name">Name</Label><Input id="ac-name" value={f.name} onChange={set("name")} /></div>
         <div className="space-y-1.5"><Label htmlFor="ac-email">Email</Label><Input id="ac-email" type="email" value={f.email} onChange={set("email")} /></div>
-        <div className="space-y-1.5"><Label htmlFor="ac-phone">Phone (10 digits)</Label><Input id="ac-phone" inputMode="tel" value={f.phone} onChange={set("phone")} /></div>
+        <div className="space-y-1.5"><Label htmlFor="ac-phone">Phone</Label><PhoneField id="ac-phone" value={f.phone} onChange={(v) => setF((p) => ({ ...p, phone: v }))} /></div>
         <div className="space-y-1.5"><Label htmlFor="ac-pw">Password (8+ characters)</Label><Input id="ac-pw" type="text" autoComplete="off" value={f.password} onChange={set("password")} /></div>
         {msg && <p role={msg.ok ? "status" : "alert"} className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-900" : "bg-destructive/10 text-destructive"}`}>{msg.text}</p>}
         <Button type="submit" disabled={busy || data?.canCreate === false} className="h-11 w-full rounded-xl">{busy ? <Loader2 className="size-4 animate-spin" /> : "Create account"}</Button>

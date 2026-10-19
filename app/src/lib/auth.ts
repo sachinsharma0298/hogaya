@@ -1,6 +1,7 @@
 // Who is signed in. Production: Supabase Auth (email magic link or Google). The operator is ONE email, set in OPERATOR_EMAIL.
 // Local development only (DEV_LOGIN=1 and no DATABASE_URL): a cookie-based stand-in so the app can be tried without Supabase.
 import { cookies } from "next/headers";
+import { canonPhone, toE164 } from "./phone";
 import { findApprovedCustomerByEmail, findProviderByEmail, findUser, getOperatorProfile, saveUser } from "./store";
 import { supabaseConfigured, supabaseServer } from "./supabase/server";
 import type { Role, User } from "./types";
@@ -26,7 +27,7 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
   // A person Hogaya approved as a customer (the operator too) has their number filled in from that record.
   const approvedPhone = existing?.phone || role === "pro" || !email ? undefined : (await findApprovedCustomerByEmail(email))?.phone;
   if (existing && existing.role === want.role && existing.provider_id === want.provider_id && !approvedPhone) return existing;
-  return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? `+91${approved.phone}` : approvedPhone ? `+91${approvedPhone}` : String(au.user_metadata?.phone ?? "")), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
+  return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? approved.phone : approvedPhone ? approvedPhone : canonPhone(au.user_metadata?.phone)), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
 }
 
 /** The operator's name and phone come from "My profile" (default name: Virat), not from the sign-in email. */
@@ -57,8 +58,8 @@ export async function clearSession() {
 
 export const isRole = (r: unknown): r is Role => r === "customer" || r === "pro" || r === "operator";
 
-/** Does this phone look like an Indian mobile number (10 digits, optionally with +91 or 91)? */
-export const validPhone = (raw: string) => /^(\+?91)?[6-9]\d{9}$/.test(raw.replace(/[\s-]/g, ""));
+/** Is this a valid phone number (any country; a bare 10-digit number is Indian)? */
+export const validPhone = (raw: string) => toE164(raw) !== null;
 
 /** Only follow redirects that stay on this site. */
 export const safeNext = (next: string | null | undefined, fallback = "/") => (next && /^\/(?![/\\])/.test(next) ? next : fallback);

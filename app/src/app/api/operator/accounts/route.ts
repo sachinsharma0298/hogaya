@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { validPhone } from "@/lib/auth";
+import { toE164 } from "@/lib/phone";
 import { accountsAvailable, createAuthUser, validPassword } from "@/lib/accounts";
 import { requireRole } from "@/lib/guard";
-import { findProviderByEmail, listUsers } from "@/lib/store";
+import { findProviderByEmail, isOperatorPhone, listUsers, OPERATOR_PHONE_ERROR } from "@/lib/store";
 
 // Operator only: the people who have an account, and creating (or resetting the password of) a customer or Pro account.
 // A Pro account needs a Pro the operator already onboarded with that email. The operator account is the one OPERATOR_EMAIL.
@@ -20,8 +20,9 @@ export async function POST(req: Request) {
   const role = b.role === "pro" || b.role === "customer" ? b.role : null;
   const name = String(b.name ?? "").trim().slice(0, 80);
   const email = String(b.email ?? "").trim().toLowerCase();
-  const phone = String(b.phone ?? "").trim();
-  if (!role || name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || !validPhone(phone)) return NextResponse.json({ error: "Enter the role, name, a valid email and a 10-digit phone." }, { status: 400 });
+  const phone = toE164(b.phone);
+  if (!role || name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || !phone) return NextResponse.json({ error: "Enter the role, name, a valid email and a valid phone number (with country code)." }, { status: 400 });
+  if (await isOperatorPhone(phone)) return NextResponse.json({ error: OPERATOR_PHONE_ERROR }, { status: 409 });
   if (!validPassword(b.password)) return NextResponse.json({ error: "The password needs 8 to 72 characters." }, { status: 400 });
   if (role === "pro" && !(await findProviderByEmail(email))) return NextResponse.json({ error: "Onboard this Pro first (Providers tab) with this same email." }, { status: 409 });
   const res = await createAuthUser({ email, password: b.password, name, phone, replaceIfExists: true });

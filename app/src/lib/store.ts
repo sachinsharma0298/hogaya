@@ -1,6 +1,7 @@
 // All data lives in Postgres (Supabase in production, an embedded Postgres locally). See src/lib/db.ts and supabase/migrations.
 // The shape the rest of the app uses (HogayaRequest with its calls and events inside) is rebuilt from the tables here.
 import type { Category } from "./categories";
+import { canonPhone } from "./phone";
 import { iso, jsonParam, pgArray, q, tx, type Queryable, type Row } from "./db";
 import type { CallRecord, HogayaRequest, Provider, Role, Settings, User } from "./types";
 
@@ -204,7 +205,7 @@ export async function insertRequest(r: HogayaRequest) {
     if (r.customer.consent_ai_call) {
       // The customer's tick-box on the booking form is kept as a consent record too.
       await c.query("insert into consents (subject_kind, subject_id, phone, consented_at, channel, recorded_by) values ('customer',$1,$2,$3::timestamptz,'booking-form','customer')",
-        [r.customer.user_id ?? last10(r.customer.phone), last10(r.customer.phone), r.customer.consent_at || r.created_at]);
+        [r.customer.user_id ?? canonPhone(r.customer.phone), canonPhone(r.customer.phone), r.customer.consent_at || r.created_at]);
     }
   });
 }
@@ -256,7 +257,7 @@ export async function deleteProvider(id: string): Promise<{ authIds: string[] } 
   return tx(async (c) => {
     const p = (await c.query("select phone, email from providers where id=$1 for update", [id]))[0];
     if (!p) return undefined;
-    await c.query("delete from approved_numbers where kind='pro' and phone=$1", [last10(p.phone as string)]);
+    await c.query("delete from approved_numbers where kind='pro' and phone=$1", [canonPhone(p.phone)]);
     const gone = await c.query<{ id: string }>("delete from profiles where provider_id=$1 and role <> 'operator' returning id", [id]);
     await c.query("delete from providers where id=$1", [id]);
     return { authIds: gone.map((r) => r.id) };
@@ -268,7 +269,7 @@ export async function deleteApproved(id: number): Promise<{ authIds: string[] } 
   const a = (await q("select * from approved_numbers where id=$1", [id]))[0];
   if (!a) return undefined;
   if (a.kind === "pro") {
-    const pro = (await q("select id from providers where right(regexp_replace(phone,'\\D','','g'),10)=$1 limit 1", [a.phone]))[0];
+    const pro = (await q("select id from providers where phone=$1 limit 1", [a.phone]))[0];
     if (pro) return deleteProvider(pro.id as string);
     await q("delete from approved_numbers where id=$1", [id]);
     return { authIds: [] };
@@ -314,7 +315,22 @@ export async function getOperatorProfile(): Promise<{ name: string; phone: strin
   return { name: ((r?.operator_name as string) || "").trim() || DEFAULT_OPERATOR_NAME, phone: (r?.operator_phone as string) ?? "" };
 }
 export async function saveOperatorProfile(name: string, phone: string) {
-  await q("update settings set operator_name=$1, operator_phone=$2 where id=1", [name, phone]);
+  await q("update settings set operator_name=$1, operator_phone=$2 where id=1", [name, canonPhone(phone)]);
+}
+
+/** The operator's number is reserved: no customer or Pro may use it. */
+export async function isOperatorPhone(raw: string): Promise<boolean> {
+  const op = (await getOperatorProfile()).phone;
+  return Boolean(op) && canonPhone(op) === canonPhone(raw);
+}
+export const OPERATOR_PHONE_ERROR = "This number is reserved for the Hogaya operator. Please use a different number.";
+/** Is this number already used by a Pro, an approved person or a customer account? (Used before reserving it for the operator.) */
+export async function phoneInUseByOthers(raw: string): Promise<boolean> {
+  const e = canonPhone(raw);
+  const n = (await q<{ n: number }>(
+    `select (select count(*) from providers where phone=$1) + (select count(*) from approved_numbers where phone=$1)
+          + (select count(*) from profiles where phone=$1 and role <> 'operator') as n`, [e]))[0]?.n;
+  return Number(n) > 0;
 }
 
 // ---- accounts (profiles) ---------------------------------------------------------------------------------
@@ -330,9 +346,9 @@ export async function findUser(id: string): Promise<User | undefined> {
 }
 export async function findUserByPhone(role: Role, phone: string): Promise<User | undefined> {
   if (phone.startsWith("dev-")) return (await listUsers()).find((u) => u.role === role && u.phone === phone); // local test accounts
-  const digits = phone.replace(/\D/g, "").slice(-10);
-  if (digits.length < 10) return undefined;
-  return (await listUsers()).find((u) => u.role === role && u.phone.replace(/\D/g, "").slice(-10) === digits);
+  const e = canonPhone(phone);
+  if (!e.startsWith("+")) return undefined;
+  return (await listUsers()).find((u) => u.role === role && canonPhone(u.phone) === e);
 }
 /** Local development only: a stand-in for a Supabase Auth user, so a profile can exist without a real sign-in. */
 export async function ensureLocalAuthUser(id: string, email: string) {
@@ -394,8 +410,8 @@ export async function writeFoAuth(patch: Record<string, unknown>) {
 export interface ApprovedNumber {
   id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string;
 }
-/** The last 10 digits: the same person, however the number was typed (+91, spaces, 0 in front). */
-export const last10 = (raw: string) => raw.replace(/\D/g, "").slice(-10);
+/** The full E.164 number: the same person however it was typed (+91, spaces, 0 in front). Two numbers match only if they are identical in full. */
+export const normPhone = canonPhone;
 
 const approvedFromRow = (r: Row): ApprovedNumber => ({
   id: Number(r.id), phone: r.phone as string, kind: r.kind as "pro" | "customer", name: r.name as string, email: r.email as string,
@@ -405,7 +421,7 @@ export async function listApproved(): Promise<ApprovedNumber[]> {
   return (await q("select * from approved_numbers order by created_at desc")).map(approvedFromRow);
 }
 export async function addApproved(a: { phone: string; kind: "pro" | "customer"; name: string; email?: string; consent_at?: string; added_by: string; note?: string }): Promise<ApprovedNumber> {
-  const phone = last10(a.phone);
+  const phone = canonPhone(a.phone);
   const row = (await q(
     `insert into approved_numbers (phone, kind, name, email, consent_at, added_by, note) values ($1,$2,$3,$4,coalesce(($5::date)::timestamp at time zone 'UTC', now()),$6,$7)
      on conflict (phone, kind) do update set name=excluded.name, email=excluded.email, consent_at=excluded.consent_at, added_by=excluded.added_by, note=excluded.note
@@ -424,9 +440,9 @@ export async function findApprovedCustomerByEmail(email: string): Promise<Approv
 }
 /** Is this phone on the approved list for this kind? For customers the account email must match too. */
 export async function isApproved(kind: "pro" | "customer", phone: string, email?: string): Promise<boolean> {
-  const digits = last10(phone);
-  if (digits.length < 10) return false;
-  const r = (await q("select email from approved_numbers where phone=$1 and kind=$2", [digits, kind]))[0];
+  const e = canonPhone(phone);
+  if (!e.startsWith("+")) return false;
+  const r = (await q("select email from approved_numbers where phone=$1 and kind=$2", [e, kind]))[0];
   if (!r) return false;
   return kind === "pro" || !r.email || (email ?? "").toLowerCase() === r.email;
 }

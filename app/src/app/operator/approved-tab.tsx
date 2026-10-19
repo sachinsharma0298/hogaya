@@ -3,11 +3,13 @@ import { useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 import { StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
+import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FO_COUNTRY_WARNING } from "@/lib/phone";
 import { usePoll } from "@/lib/use-poll";
 
-interface Approved { id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string }
+interface Approved { callable?: boolean; id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string }
 
 /** The only phone numbers a LIVE Fo call may ever reach. Anyone not here gets simulated calls. */
 export function ApprovedTab() {
@@ -50,7 +52,7 @@ export function ApprovedTab() {
           </select>
         </div>
         <div className="space-y-1.5"><Label htmlFor="ap-name">Name</Label><Input id="ap-name" value={f.name} onChange={set("name")} /></div>
-        <div className="space-y-1.5"><Label htmlFor="ap-phone">Phone (10 digits)</Label><Input id="ap-phone" inputMode="tel" value={f.phone} onChange={set("phone")} /></div>
+        <div className="space-y-1.5"><Label htmlFor="ap-phone">Phone</Label><PhoneField id="ap-phone" value={f.phone} onChange={(v) => setF((p) => ({ ...p, phone: v }))} /></div>
         {f.kind === "customer" && (
           <div className="space-y-1.5">
             <Label htmlFor="ap-email">Email they sign in with</Label>
@@ -85,7 +87,7 @@ export function ApprovedTab() {
             {data.approved.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div>
-                  <p className="font-semibold">{a.name} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.kind}</span></p>
+                  <p className="font-semibold">{a.name} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.kind}</span>{a.callable === false && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">⚠ {FO_COUNTRY_WARNING}</span>}</p>
                   <p className="text-xs text-foreground/75">•••• {a.phone.slice(-4)}{a.email ? ` · ${a.email}` : ""} · consent {a.consent_at.slice(0, 10)} · by {a.added_by}</p>
                   {a.note && <p className="text-xs text-foreground/60">{a.note}</p>}
                 </div>
