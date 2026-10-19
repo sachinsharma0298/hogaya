@@ -206,12 +206,15 @@ export async function reconfirmSummaryToJson(summaryText: string): Promise<Recon
   return { reconfirmed: boolOrNull(raw.reconfirmed), can_make_it: boolOrNull(raw.can_make_it), exact_time: strOrNull(raw.exact_time), notes: typeof raw.notes === "string" ? raw.notes : "" };
 }
 
+/** The arrival code the customer shows the Pro. Must match the length issued in confirm-arrival (6 digits). */
+export const ARRIVAL_CODE_LENGTH = 6;
+
 export async function arrivalSummaryToJson(summaryText: string): Promise<ArrivalJson> {
   const raw = await extract(
-    `You turn an AI phone assistant's call summary into data for Hogaya. Fo called the PROVIDER and asked whether they reached the customer's place and for the 4-digit code the customer gave them at the door. Record only what the provider said.
+    `You turn an AI phone assistant's call summary into data for Hogaya. Fo called the PROVIDER and asked whether they reached the customer's place and for the service code the customer gave them at the door. Record only what the provider said.
 - arrived: true if the provider said they are at the customer's place, false if they said they are not, else null.
 - provider_gave_code: true only if the provider actually said a code.
-- code_digits: the code the provider said as digits only (for example "4735"). Convert spoken number words in Hindi, Hinglish or English ("chaar saat teen paanch", "four seven three five", "47 35") into digits. If the provider did not give exactly 4 digits, put null here and explain in notes. Copy the digits exactly as the provider said them; do not correct or guess them.
+- code_digits: the code the provider said as digits only (for example "473521"). Convert spoken number words in Hindi, Hinglish or English ("chaar saat teen paanch", "four seven three five", "47 35") into digits. If the provider did not give exactly ${ARRIVAL_CODE_LENGTH} digits, put null here and explain in notes. Copy the digits exactly as the provider said them; do not correct or guess them.
 - notes: a short plain-English note of anything else that matters (empty string if nothing).`,
     {
       name: "record_arrival_result",
@@ -226,5 +229,5 @@ export async function arrivalSummaryToJson(summaryText: string): Promise<Arrival
     `Fo's call summary:\n\n${summaryText}`,
   );
   const digits = typeof raw.code_digits === "string" ? raw.code_digits.replace(/\D/g, "") : "";
-  return { arrived: boolOrNull(raw.arrived), provider_gave_code: raw.provider_gave_code === true && digits.length === 4, code_digits: digits.length === 4 ? digits : null, notes: typeof raw.notes === "string" ? raw.notes : "" };
+  return { arrived: boolOrNull(raw.arrived), provider_gave_code: raw.provider_gave_code === true && digits.length === ARRIVAL_CODE_LENGTH, code_digits: digits.length === ARRIVAL_CODE_LENGTH ? digits : null, notes: typeof raw.notes === "string" ? raw.notes : "" };
 }
