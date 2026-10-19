@@ -169,7 +169,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
       {live && ((r.customer_choice && !b) || b?.provider_confirmed === false) && (
         <section className="rounded-3xl border-2 border-primary bg-accent/50 p-5">
           <p className="text-sm font-semibold">Next: Fo calls {nameOf(b?.provider_id ?? r.customer_choice?.provider_id)} to confirm the booking{b?.provider_confirmed === false ? " (backup)" : ""}</p>
-          <p className="mt-1 text-xs text-foreground/85">Fo confirms the slot and visit charge, shares the address only now, and tells the provider the customer will give a 4-digit service code at the door. Fo never says the code. It only starts when you click.</p>
+          <p className="mt-1 text-xs text-foreground/85">Fo confirms the slot and visit charge, shares the address only now, and tells the provider the customer will give a service code at the door. Fo never says the code. It only starts when you click.</p>
           <Button onClick={() => run("book-provider", "book-provider", undefined, "Started. Watch the timeline for progress.")} disabled={inflight || busy !== null || r.state === "paused"} className="mt-3 rounded-xl"><PhoneCall className="mr-2 size-4" /> Call provider to book</Button>
         </section>
       )}
