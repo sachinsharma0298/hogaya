@@ -47,7 +47,7 @@ async function statusOf(f: Found): Promise<Review> {
 
 export interface PersonDetail {
   key: string; name: string; email: string; phone: string; country: string; role: "customer" | "pro"; status: Review;
-  has_login: boolean; signed_up_at?: string; reviewed_at?: string; reviewed_by?: string; notes: string; password_reset_requested?: boolean;
+  has_login: boolean; signed_up_at?: string; reviewed_at?: string; reviewed_by?: string; notes: string;
   pro?: { categories: Category[]; area: string; visit_charge: string; consent_text: string; consent_at: string; reliability: number; on_time_pct: number; jobs: number; no_shows: number; opt_out: boolean };
   bookings: { id: string; category: string; state: string; problem: string; created_at: string }[];
 }

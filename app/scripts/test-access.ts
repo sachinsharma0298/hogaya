@@ -22,7 +22,8 @@ const status = async (j: Jar, m: string, p: string, json?: unknown) => (await j.
   const ops: [string, string][] = [["GET", "/api/requests"], ["POST", "/api/reset"], ["POST", "/api/requests/archive-all"], ["GET", "/api/settings"], ["POST", "/api/settings"], ["GET", "/api/providers"],
     ["POST", "/api/requests/r-x/call-now"], ["POST", "/api/requests/r-x/call-customer"], ["POST", "/api/requests/r-x/book-provider"], ["POST", "/api/requests/r-x/reconfirm"],
     ["POST", "/api/requests/r-x/verify-arrival"], ["POST", "/api/requests/r-x/control"], ["POST", "/api/requests/r-x/reply"], ["POST", "/api/requests/r-x/skip"],
-    ["POST", "/api/requests/r-x/check-again"], ["POST", "/api/requests/r-x/outcome"], ["GET", "/api/fo/connect"], ["GET", "/api/fo/status"], ["POST", "/api/fo/test"], ["POST", "/api/claude/test"]];
+    ["POST", "/api/requests/r-x/check-again"], ["POST", "/api/requests/r-x/outcome"], ["GET", "/api/fo/connect"], ["GET", "/api/fo/status"], ["POST", "/api/fo/test"], ["POST", "/api/claude/test"],
+    ["GET", "/api/operator/people/x"], ["POST", "/api/operator/people/x"], ["DELETE", "/api/operator/people/x"], ["GET", "/api/operator/resets"], ["GET", "/api/operator/pending"]];
   for (const [m, p] of ops) assert.equal(await status(anon, m, p, {}), 401, `anon ${m} ${p}`);
   assert.equal(await status(anon, "GET", "/api/me/bookings"), 401);
   assert.equal(await status(anon, "POST", "/api/requests", { category: "geyser" }), 401);
