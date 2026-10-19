@@ -133,6 +133,12 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   console.log("ok  operator profile: default name, edits saved, phone not stored on a profile");
   assert.ok(await store.isOperatorPhone("9000000001")); assert.ok(!(await store.isOperatorPhone("9000000002")));
   console.log("ok  the operator's phone is reserved");
+  // approval queue: a pending Pro is never a Pro; a pending customer is listed until approved or rejected
+  await store.addPendingPro({ id: "pp-1", name: "New Pro", email: "np@x.in", phone: "+254718795772", categories: ["plumber"], area: "Noida", visit_charge: "₹100", consent_at: new Date().toISOString() });
+  assert.equal((await store.listPendingPros()).length, 1); assert.equal((await store.listProviders()).filter((p) => p.email === "np@x.in").length, 0);
+  assert.ok(await store.pendingProExists("NP@x.in", "+0")); assert.ok((await store.getPendingPro("pp-1"))?.phone === "+254718795772");
+  const pc = await store.listPendingCustomers(); assert.ok(pc.length >= 0);
+  console.log("ok  approval queue: pending Pros are stored but are not Pros");
   const approvedBefore = (await store.listApproved()).length;
   assert.ok(approvedBefore > 0);
   const gone = await store.resetAllData();

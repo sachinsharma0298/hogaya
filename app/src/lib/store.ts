@@ -245,6 +245,7 @@ export async function resetAllData(): Promise<{ removedRequests: number; removed
     const out = { removedRequests: await n("requests"), removedProviders: await n("providers"), removedApproved: await n("approved_numbers"), removedAccounts: 0 };
     await c.query("delete from requests"); // calls, events and private details go with them
     await c.query("delete from providers");
+    await c.query("delete from pending_pros");
     await c.query("delete from approved_numbers");
     out.removedAccounts = (await c.query<{ id: string }>("delete from profiles where role <> 'operator' returning id")).length;
     await c.query("update settings set autopilot=false, simulate_no_reconfirm=false where id=1");
@@ -376,6 +377,48 @@ export async function saveUser(u: User): Promise<User> {
      on conflict (id) do update set role=excluded.role, name=excluded.name, phone=excluded.phone, email=excluded.email, provider_id=excluded.provider_id`,
     [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at]);
   return u;
+}
+
+// ---- approval queue (pending customers and Pros) --------------------------------------------------------
+
+export interface PendingCustomer { id: string; name: string; email: string; phone: string; created_at: string }
+export interface PendingPro { id: string; name: string; email: string; phone: string; categories: Category[]; area: string; visit_charge: string; consent_at: string; created_at: string }
+
+/** Self-registered customers waiting for the operator: not approved, not rejected, and not someone who applied as a Pro. */
+export async function listPendingCustomers(): Promise<PendingCustomer[]> {
+  const rows = await q(
+    `select id, name, email, phone, created_at from profiles p
+     where role='customer' and review='pending'
+       and not exists (select 1 from approved_numbers a where a.kind='customer' and a.email <> '' and a.email = lower(p.email))
+       and not exists (select 1 from pending_pros x where lower(x.email) = lower(p.email))
+     order by created_at`);
+  return rows.map((r) => ({ id: r.id as string, name: r.name as string, email: r.email as string, phone: r.phone as string, created_at: iso(r.created_at)! }));
+}
+export async function setReview(id: string, review: "approved" | "rejected"): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
+  return (await q("update profiles set review=$2 where id=$1::uuid and role='customer' returning id", [id, review])).length > 0;
+}
+
+const pendingProFromRow = (r: Row): PendingPro => ({
+  id: r.id as string, name: r.name as string, email: r.email as string, phone: r.phone as string, categories: r.categories as Category[],
+  area: r.area as string, visit_charge: r.visit_charge as string, consent_at: iso(r.consent_at)!, created_at: iso(r.created_at)!,
+});
+export async function listPendingPros(): Promise<PendingPro[]> {
+  return (await q("select * from pending_pros where status='pending' order by created_at")).map(pendingProFromRow);
+}
+export async function getPendingPro(id: string): Promise<PendingPro | undefined> {
+  const r = (await q("select * from pending_pros where id=$1 and status='pending'", [id]))[0];
+  return r ? pendingProFromRow(r) : undefined;
+}
+export async function pendingProExists(email: string, phone: string): Promise<boolean> {
+  return (await q("select 1 from pending_pros where status='pending' and (lower(email)=lower($1) or phone=$2) limit 1", [email, canonPhone(phone)])).length > 0;
+}
+export async function addPendingPro(p: Omit<PendingPro, "created_at">) {
+  await q("insert into pending_pros (id,name,email,phone,categories,area,visit_charge,consent_at) values ($1,$2,$3,$4,$5::text[],$6,$7,$8::timestamptz)",
+    [p.id, p.name, p.email.toLowerCase(), canonPhone(p.phone), pgArray(p.categories), p.area, p.visit_charge, p.consent_at]);
+}
+export async function setPendingProStatus(id: string, status: "approved" | "rejected") {
+  await q("update pending_pros set status=$2 where id=$1", [id, status]);
 }
 
 // ---- Fo sign-in tokens (server only) ---------------------------------------------------------------------

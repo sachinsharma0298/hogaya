@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { toE164 } from "@/lib/phone";
 import { isCategory, type Category } from "@/lib/categories";
 import { requireRole } from "@/lib/guard";
-import { addApproved, addProvider, findProviderByEmail, getProviders, isOperatorPhone, listProviders, OPERATOR_PHONE_ERROR } from "@/lib/store";
+import { createApprovedPro } from "@/lib/onboard";
+import { findProviderByEmail, getProviders, isOperatorPhone, listProviders, OPERATOR_PHONE_ERROR } from "@/lib/store";
 
 export async function GET() {
   const auth = await requireRole("operator");
@@ -31,12 +32,6 @@ export async function POST(req: Request) {
   const existing = await listProviders();
   if (existing.some((p) => p.phone === phone) || (await findProviderByEmail(email))) return NextResponse.json({ error: "A Pro with this phone or email already exists." }, { status: 409 });
 
-  const now = new Date().toISOString();
-  const p = await addProvider({
-    id: `p-${Math.random().toString(36).slice(2, 8)}`, name, category: categories[0], categories, area, visit_charge: `₹${visit}`,
-    phone, email, consent_ai_call: true, consent_date: consentDate, opt_out: false, reliability: 70, on_time_pct: 0, jobs: 0, no_shows: 0, demo: false,
-    onboarded_by: auth.user.email ?? auth.user.name, onboarded_at: now,
-  });
-  await addApproved({ phone, kind: "pro", name, email, consent_at: consentDate, added_by: auth.user.email ?? auth.user.name, note: "Onboarded as a Pro" });
+  const p = await createApprovedPro({ name, phone, email, area, visit, categories, consentDate, by: auth.user.email ?? auth.user.name, note: "Onboarded as a Pro" });
   return NextResponse.json({ ok: true, provider: { id: p.id, name: p.name } });
 }

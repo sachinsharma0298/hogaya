@@ -10,13 +10,16 @@ import { BookingDetail } from "./booking-detail";
 import type { ConsoleData, ConsoleSettings } from "./console-types";
 import { AccountsTab } from "./accounts-tab";
 import { ApprovedTab } from "./approved-tab";
+import { PendingTab, type PendingData } from "./pending-tab";
 import { ProvidersTab } from "./providers-tab";
 
 export default function Operator() {
   const session = useSession();
   const { data, error } = usePoll<ConsoleData>("/api/requests", 3000);
   const settings = usePoll<ConsoleSettings>("/api/settings", 2000).data ?? { autopilot: false, simulate_no_reconfirm: false };
-  const [tab, setTab] = useState<"bookings" | "providers" | "approved" | "accounts">("bookings");
+  const [tab, setTab] = useState<"bookings" | "pending" | "providers" | "approved" | "accounts">("bookings");
+  const pending = usePoll<PendingData>("/api/operator/pending", 5000).data;
+  const pendingCount = (pending?.customers.length ?? 0) + (pending?.pros.length ?? 0);
   const [sel, setSel] = useState<string | undefined>();
   const [filters, setFilters] = useState<Filters>({ search: "", category: "all", flaggedOnly: false, showArchived: false });
   const [note, setNote] = useState("");
@@ -74,8 +77,8 @@ export default function Operator() {
             <Brand small english />
             <span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span>
             <nav aria-label="Console sections" className="flex rounded-full border bg-card p-0.5 text-sm font-medium">
-              {(["bookings", "providers", "approved", "accounts"] as const).map((t) => (
-                <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-1.5 capitalize transition ${tab === t ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}>{t}</button>
+              {(["bookings", "pending", "providers", "approved", "accounts"] as const).map((t) => (
+                <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-1.5 capitalize transition ${tab === t ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}>{t}{t === "pending" && pendingCount > 0 && <span aria-label={`${pendingCount} waiting for approval`} className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t ? "bg-primary-foreground text-primary" : "bg-destructive text-white"}`}>{pendingCount}</span>}</button>
               ))}
             </nav>
           </div>
@@ -104,6 +107,7 @@ export default function Operator() {
         {!data && !error && <StateBox title="Loading…" body="Fetching bookings." />}
 
         {data && tab === "providers" && <ProvidersTab providers={data.providers} />}
+        {tab === "pending" && <PendingTab data={pending ?? undefined} />}
         {tab === "approved" && <ApprovedTab />}
         {tab === "accounts" && <AccountsTab />}
         {data && tab === "bookings" && (
