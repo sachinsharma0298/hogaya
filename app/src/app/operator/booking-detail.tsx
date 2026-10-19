@@ -157,7 +157,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
         <section className="rounded-3xl border-2 border-primary bg-accent/50 p-5">
           <p className="text-sm font-semibold">Next: Fo calls the customer ({customerHint})</p>
           <p className="mt-1 text-xs text-foreground/85">
-            Fo tells the customer {options.length > 1 ? "both options" : "the option"} in simple Hinglish (name, time, price), says Hogaya recommends <b>{options[0].name}</b> ({recommendationReason(options, enT).toLowerCase()}), and asks which one they want.
+            Fo tells the customer {options.length > 1 ? "both options" : "the option"} in simple English (name, time, price), says Hogaya recommends <b>{options[0].name}</b> ({recommendationReason(options, enT).toLowerCase()}), and asks which one they want.
           </p>
           <p className="mt-1 text-xs text-foreground/80">A real phone call. {r.customer.consent_ai_call ? "The customer agreed to an AI call on the form." : "The customer did NOT consent."} It only starts when you click.</p>
           <div className="mt-3 flex flex-wrap gap-2">

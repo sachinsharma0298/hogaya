@@ -60,23 +60,23 @@ const base: ProviderCallJson = {
 const DEMO: Record<string, { summary: string; json: ProviderCallJson }> = {
   "p-ramesh": {
     summary:
-      "Ramesh picked up on the second ring. He said he can come at sawa chhe, which is 6:15 PM, and Fo repeated it back and he said yes. Visit charge is ₹150; he will price the labour after seeing the fan. If the capacitor is faulty he will bring one. He agreed to a reminder call before the visit.",
-    json: { ...base, slot: "6:15 PM", slot_raw: "sawa chhe", slot_exact: true, price_quote: "₹150 visit; kaam dekh ke bataunga", price_type: "after_inspection", provider_name: "Ramesh", visit_charge: "₹150", brings_parts: true, reminder_ok: true, notes: "Capacitor kharab hua toh saath laayenge." },
+      "Ramesh picked up on the second ring. He said he can come at quarter past six, which is 6:15 PM, and Fo repeated it back and he said yes. Visit charge is ₹150; he will price the labour after seeing the fan. If the capacitor is faulty he will bring one. He agreed to a reminder call before the visit.",
+    json: { ...base, slot: "6:15 PM", slot_raw: "quarter past six", slot_exact: true, price_quote: "₹150 visit; work priced after inspection", price_type: "after_inspection", provider_name: "Ramesh", visit_charge: "₹150", brings_parts: true, reminder_ok: true, notes: "Will bring a capacitor if the old one is faulty." },
   },
   "p-suresh": {
     summary:
       "Suresh said yes, he can come sometime between 7 and 8 this evening but would not give an exact time. Visit charge ₹200 and the work would be roughly ₹300 to ₹500. He did not say whether he carries spare parts. He said a reminder call is fine.",
-    json: { ...base, slot: "7–8 PM", slot_raw: "saat se aath ke beech", slot_exact: false, price_quote: "₹200 visit + ₹300–500 kaam", price_type: "range", provider_name: "Suresh", visit_charge: "₹200", labour_estimate: "₹300–500", brings_parts: null, reminder_ok: true, notes: "" },
+    json: { ...base, slot: "7–8 PM", slot_raw: "between seven and eight", slot_exact: false, price_quote: "₹200 visit + ₹300–500 work", price_type: "range", provider_name: "Suresh", visit_charge: "₹200", labour_estimate: "₹300–500", brings_parts: null, reminder_ok: true, notes: "" },
   },
   "p-mohan": {
     summary:
       "Mohan can come at 6 PM sharp. Visit charge ₹150, repair roughly ₹250 to ₹400 depending on the part. He will bring common washers and pipes. He did not say yes or no to a reminder call.",
-    json: { ...base, slot: "6:00 PM", slot_raw: "chhe baje", slot_exact: true, price_quote: "₹150 visit + ₹250–400 kaam", price_type: "range", provider_name: "Mohan", visit_charge: "₹150", labour_estimate: "₹250–400", brings_parts: true, reminder_ok: null, notes: "Part ke hisaab se kaam ka rate badal sakta hai." },
+    json: { ...base, slot: "6:00 PM", slot_raw: "six o'clock", slot_exact: true, price_quote: "₹150 visit + ₹250–400 work", price_type: "range", provider_name: "Mohan", visit_charge: "₹150", labour_estimate: "₹250–400", brings_parts: true, reminder_ok: null, notes: "The work rate may change depending on the part." },
   },
 };
 
 // Fake but varied answers for the demo providers that have no hand-written script.
-const SLOTS = [["5:30 PM", "saadhe paanch"], ["6:00 PM", "chhe baje"], ["6:45 PM", "paune saat"], ["7:00 PM", "saat baje"], ["7:30 PM", "saadhe saat"], ["8:00 PM", "aath baje"]];
+const SLOTS = [["5:30 PM", "half past five"], ["6:00 PM", "six o'clock"], ["6:45 PM", "quarter to seven"], ["7:00 PM", "seven o'clock"], ["7:30 PM", "half past seven"], ["8:00 PM", "eight o'clock"]];
 const VISITS = ["₹100", "₹150", "₹200", "₹250"];
 const LABOURS = ["₹300–500", "₹400–700", "₹200–350", "₹500–900"];
 
@@ -94,7 +94,7 @@ function demoFor(p: Provider): { summary: string; json: ProviderCallJson } {
   return {
     summary: `${first} said he can come ${windowOnly ? "some time between 5 and 8 PM but gave no exact time" : `at ${slotWords}, which is ${slot}`}. Visit charge ${visit}. ${labour ? `Work would be roughly ${labour}.` : "He will price the work after seeing it."} ${parts === null ? "He did not say whether he brings parts." : parts ? "He will bring common parts." : "He will not bring parts."} ${reminder ? "A reminder call is fine." : "He did not answer about a reminder call."}`,
     json: {
-      ...base, slot, slot_raw: windowOnly ? "paanch se aath" : slotWords, slot_exact: !windowOnly, price_quote: labour ? `${visit} visit + ${labour} kaam` : `${visit} visit; kaam dekh ke`,
+      ...base, slot, slot_raw: windowOnly ? "between five and eight" : slotWords, slot_exact: !windowOnly, price_quote: labour ? `${visit} visit + ${labour} work` : `${visit} visit; work priced after inspection`,
       price_type: labour ? "range" : "after_inspection", provider_name: first, visit_charge: visit,
       labour_estimate: labour, brings_parts: parts, reminder_ok: reminder, notes: "",
     },
@@ -227,7 +227,7 @@ function briefFor(job: CallJob): string {
   const j = jobInfo(r);
   switch (job.kind) {
     case "provider":
-      return buildProviderBrief({ providerPhone: phoneFor(job.provider!), category: j.category, problem: j.problem, sector: j.sector, timeWindow: j.time_window, notes: j.notes });
+      return buildProviderBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, problem: j.problem, sector: j.sector, timeWindow: j.time_window, notes: j.notes });
     case "customer":
       return buildCustomerBrief({
         customerPhone: customerPhone(r.customer.phone), customerName: r.customer.name, category: j.category, problem: j.problem, sector: j.sector,
@@ -235,16 +235,16 @@ function briefFor(job: CallJob): string {
       });
     case "booking":
       return buildBookingBrief({
-        providerPhone: phoneFor(job.provider!), category: j.category, problem: j.problem, sector: j.sector, address: r.address,
+        providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, problem: j.problem, sector: j.sector, address: r.address,
         slot: job.option?.slot ?? null, slotExact: job.option?.slot_exact ?? false, visitCharge: job.option?.visit_charge ?? null,
       });
     case "reconfirm":
       return buildReconfirmBrief({
-        providerPhone: phoneFor(job.provider!), category: j.category, sector: j.sector, slot: r.booking?.slot ?? null,
+        providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, sector: j.sector, slot: r.booking?.slot ?? null,
         slotExact: r.booking?.slot_exact !== false, visitCharge: r.booking?.visit_charge ?? null,
       });
     case "arrival":
-      return buildArrivalBrief({ providerPhone: phoneFor(job.provider!), category: j.category, sector: j.sector });
+      return buildArrivalBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, sector: j.sector });
     default:
       throw new Error("This kind of call cannot be placed for real");
   }
