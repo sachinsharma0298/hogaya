@@ -22,7 +22,8 @@ function LoginForm() {
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const cfg = usePoll<{ supabase: boolean; dev: boolean }>("/api/auth/config", 600000).data;
-  const [mode, setMode] = useState<"signin" | "create" | "link">("signin");
+  const [mode, setMode] = useState<"signin" | "create" | "link" | "forgot">("signin");
+  const [forgotDone, setForgotDone] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -45,8 +46,11 @@ function LoginForm() {
   }
   async function afterSession() {
     // The password sign-in sets the session in this browser; ask the server who we are, then go to the right home page.
-    const me = (await (await fetch("/api/auth/me", { cache: "no-store" })).json().catch(() => ({}))) as { user?: { role: Role } };
-    window.location.assign(next || (me.user ? HOME[me.user.role] : "/me"));
+    const me = (await (await fetch("/api/auth/me", { cache: "no-store" })).json().catch(() => ({}))) as { user?: { role: Role; review?: string; must_change_password?: boolean } };
+    if (me.user?.must_change_password) return window.location.assign("/set-password"); // the operator reset the password: choose a new one first
+    // Someone still waiting (or not approved) lands on their own page, which says where they stand. Approved Pros go to /pro, customers to /me.
+    const approved = !me.user || me.user.role === "operator" || me.user.review === "approved";
+    window.location.assign(approved ? next || (me.user ? HOME[me.user.role] : "/me") : "/me");
   }
   async function passwordSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -66,6 +70,16 @@ function LoginForm() {
     const { error: err } = await supabaseBrowser().auth.signInWithPassword({ email: email.trim(), password });
     if (err) { setBusy(null); return setError(t("login.err.generic")); }
     await afterSession();
+  }
+  async function forgot(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!email.trim()) return setError(t("login.err.fields"));
+    setBusy("pw");
+    const res = await fetch("/api/auth/forgot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: email.trim() }) });
+    setBusy(null);
+    if (!res.ok) return setError(t("login.err.generic"));
+    setForgotDone(true);
   }
   async function google() {
     setError("");
@@ -103,6 +117,22 @@ function LoginForm() {
               <p className="text-center text-xs text-foreground/70">{t("login.or")}</p>
             </>
           )}
+          {mode === "forgot" ? (
+            forgotDone ? (
+              <div className="rounded-2xl border bg-card p-5 text-center" role="status">
+                <MailCheck className="mx-auto size-8 text-primary" />
+                <p className="mt-2 text-sm text-foreground/85">{t("login.forgot.sent")}</p>
+                <button type="button" onClick={() => { setMode("signin"); setForgotDone(false); setError(""); }} className="mt-3 text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot.back")}</button>
+              </div>
+            ) : (
+              <form onSubmit={forgot} noValidate className="space-y-3">
+                <div className="space-y-1.5"><Label htmlFor="forgot-id">{t("login.forgot.label")}</Label><Input id="forgot-id" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" /></div>
+                <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">{busy ? <Loader2 className="size-4 animate-spin" /> : t("login.forgot.btn")}</Button>
+                <button type="button" onClick={() => { setMode("signin"); setError(""); }} className="block w-full text-center text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot.back")}</button>
+              </form>
+            )
+          ) : (
+          <>
           <form onSubmit={mode === "signin" ? passwordSignIn : mode === "create" ? createAccount : sendLink} noValidate className="space-y-3">
             {mode === "create" && (
               <>
@@ -124,6 +154,9 @@ function LoginForm() {
               {busy ? <Loader2 className="size-4 animate-spin" /> : mode === "signin" ? t("login.signin.btn") : mode === "create" ? t("login.create.btn") : t("login.magic")}
             </Button>
           </form>
+          {mode === "signin" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="block w-full text-center text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot")}</button>}
+          </>
+          )}
           <p className="text-xs text-foreground/75">{t("login.pro.note")}</p>
         </div>
       ))}

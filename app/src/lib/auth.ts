@@ -39,7 +39,7 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
     return (await findUser(au.id))!;
   }
   const application = email ? await findPendingProAny({ email }) : undefined;
-  const review: Review = role !== "customer" || approvedEntry ? "approved" : application?.status === "rejected" ? "rejected" : "pending";
+  const review: Review = role === "pro" ? ((await isApproved("pro", provider!.phone)) ? "approved" : "rejected") : role === "operator" || approvedEntry ? "approved" : application?.status === "rejected" ? "rejected" : "pending";
   const decidedBy = approvedEntry?.added_by ?? provider?.onboarded_by ?? "";
   const user = await saveUser({
     id: au.id, role, name, phone: approvedEntry ? approvedEntry.phone : canonPhone(au.user_metadata?.phone), email, provider_id: want.provider_id, created_at: new Date().toISOString(),

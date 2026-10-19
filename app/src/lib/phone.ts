@@ -32,7 +32,8 @@ export const phoneCountry = (e164: string): CountryCode | undefined => parsePhon
  *  (e.g. "IN,KE") in NEXT_PUBLIC_FO_CALL_COUNTRIES: only then does the "Fo may not call this country" warning and block apply. */
 const RAW_COUNTRIES = (process.env.NEXT_PUBLIC_FO_CALL_COUNTRIES ?? "ALL").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
 const ANY_COUNTRY = RAW_COUNTRIES.length === 0 || RAW_COUNTRIES.includes("ALL");
-export const foMayCall = (e164: string) => { if (ANY_COUNTRY) return Boolean(toE164(e164)); const c = phoneCountry(e164); return Boolean(c) && RAW_COUNTRIES.includes(c as string); };
+// With no country rule the approved list and the live gate alone decide who may be called.
+export const foMayCall = (e164: string) => { if (ANY_COUNTRY) return true; const c = phoneCountry(e164); return Boolean(c) && RAW_COUNTRIES.includes(c as string); };
 export const FO_COUNTRY_WARNING = "Fo may not call this country";
 
 export const maskPhone = (e164: string) => (e164 ? `•••• ${e164.replace(/\D/g, "").slice(-4)}` : "");

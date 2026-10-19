@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Briefcase, UserRound } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
+import { AccountBanner } from "@/components/account-banner";
 import { useSession } from "@/components/session";
 import { useT } from "@/lib/lang";
 import type { Provider } from "@/lib/types";
@@ -25,7 +26,7 @@ export function ProShell({ children }: { children: (ctx: { user: SessionUser; pr
   ];
   return (
     <CustomerShell>
-      <div className="pb-24 md:pb-0">{children({ user, provider })}</div>
+      <div className="pb-24 md:pb-0"><AccountBanner />{children({ user, provider })}</div>
       <nav aria-label="Pro" className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur md:static md:mt-6 md:border-0 md:bg-transparent">
         <div className="mx-auto grid max-w-[520px] grid-cols-2 gap-1 p-2 md:p-0">
           {tabs.map(({ href, label, Icon }) => (

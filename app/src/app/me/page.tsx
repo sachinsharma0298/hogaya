@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, Plus } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
 import { StateChip } from "@/app/operator/booking-list";
+import { AccountBanner } from "@/components/account-banner";
 import { useSession } from "@/components/session";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/lang";
@@ -26,6 +27,7 @@ export default function MyBookings() {
   const rows = list.data?.bookings ?? null;
   return (
     <CustomerShell>
+      <AccountBanner />
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{t("me.title")}</h1>
         <Link href="/book" className="inline-flex h-9 items-center gap-1 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground"><Plus className="size-4" /> {t("me.new")}</Link>

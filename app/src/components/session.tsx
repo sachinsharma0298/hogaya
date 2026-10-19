@@ -33,6 +33,8 @@ export function useSession() {
       .catch(() => alive && setState((s) => ({ ...s, loading: false })));
     return () => { alive = false; };
   }, []);
+  const forced = state.user?.must_change_password === true;
+  useEffect(() => { if (forced && window.location.pathname !== "/set-password") window.location.assign("/set-password"); }, [forced]);
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setState({ loading: false, user: null });

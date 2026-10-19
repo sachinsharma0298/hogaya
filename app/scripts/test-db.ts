@@ -139,6 +139,54 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   assert.ok(await store.pendingProExists("NP@x.in", "+0")); assert.ok((await store.getPendingPro("pp-1"))?.phone === "+254718795772");
   const pc = await store.listPendingCustomers(); assert.ok(pc.length >= 0);
   console.log("ok  approval queue: pending Pros are stored but are not Pros");
+  // sign-up -> approval -> people records
+  const C = "66666666-6666-6666-6666-666666666666";
+  await (await getDb()).query("insert into auth.users (id, email) values ($1::uuid,$2)", [C, "c@x.in"]);
+  await store.saveUser({ id: C, role: "customer", name: "New Cust", phone: "+919876543210", email: "c@x.in", created_at: now });
+  assert.equal((await store.findUser(C))?.review, "pending"); assert.equal((await store.findUser(O))?.review, "approved"); assert.equal((await store.findUser(P))?.review, "approved");
+  const people = await import("../src/lib/people");
+  assert.equal((await people.getPerson(C))?.status, "pending");
+  assert.equal((await people.approvePerson(C, "op@x.in")).ok, true);
+  let pc1 = (await people.getPerson(C))!;
+  assert.equal(pc1.status, "approved"); assert.equal(pc1.reviewed_by, "op@x.in"); assert.ok(pc1.reviewed_at); assert.equal(pc1.country, "India (IN)");
+  assert.equal((await store.findUser(C))?.approval_seen, false); // "Approved by Hogaya" is shown once
+  await store.markApprovalSeen(C); assert.equal((await store.findUser(C))?.approval_seen, true);
+  assert.ok(await store.isApproved("customer", "+919876543210", "c@x.in"));
+  assert.equal((await people.rejectPerson(C, "op@x.in")).ok, true);
+  assert.equal((await people.getPerson(C))?.status, "rejected"); assert.ok(!(await store.isApproved("customer", "+919876543210", "c@x.in")), "a rejected person is never callable");
+  console.log("ok  customer: pending -> approved (who/when, notice once) -> rejected (taken off the approved list)");
+  // a Pro application: pending until approved, then a real Pro with the consent wording kept
+  await store.updatePendingPro("pp-1", { phone: "+919811122233" });
+  await store.addPendingPro({ id: "pp-2", name: "Joiner", email: "j@x.in", phone: "+919822233344", categories: ["plumber"], area: "Noida", visit_charge: "₹120", consent_at: now, consent_text: "I agree to AI calls." });
+  assert.equal((await people.getPerson("pp-2"))?.status, "pending");
+  assert.equal((await people.approvePerson("pp-2", "op@x.in")).ok, true);
+  const jp = (await people.getPerson("pp-2"))!;
+  assert.equal(jp.status, "approved"); assert.equal(jp.role, "pro"); assert.equal(jp.pro?.consent_text, "I agree to AI calls."); assert.ok(await store.isApproved("pro", "+919822233344"));
+  assert.equal((await people.rejectPerson("pp-2", "op@x.in")).ok, true);
+  assert.ok(!(await store.isApproved("pro", "+919822233344")), "a rejected Pro is off the approved list"); assert.equal((await people.getPerson("pp-2"))?.status, "rejected");
+  console.log("ok  Pro application: pending -> approved with consent wording -> rejected (not callable)");
+  // first sign-in decides the starting status: an approved applicant starts Approved (with the notice), a rejected one Rejected, a stranger Pending
+  const { ensureProfile } = await import("../src/lib/auth");
+  const au = async (id: string, email: string) => { await (await getDb()).query("insert into auth.users (id, email) values ($1::uuid,$2)", [id, email]); return ensureProfile({ id, email, email_confirmed_at: now, user_metadata: { phone: "+919800000001" } }); };
+  const first = await au("77777777-7777-7777-7777-777777777771", "j@x.in"); // pp-2's Pro record exists, but the number was taken off the list by the reject above
+  assert.equal(first.role, "pro"); assert.equal(first.review, "rejected");
+  await store.addPendingPro({ id: "pp-3", name: "Turned down", email: "td@x.in", phone: "+919833344455", categories: ["ac"], area: "Noida", visit_charge: "₹90", consent_at: now });
+  await store.setPendingProStatus("pp-3", "rejected", "op@x.in");
+  assert.equal((await au("77777777-7777-7777-7777-777777777772", "td@x.in")).review, "rejected");
+  assert.equal((await au("77777777-7777-7777-7777-777777777773", "stranger@x.in")).review, "pending");
+  console.log("ok  first sign-in sets the starting status (stranger Pending, rejected applicant Rejected)");
+  // operator notes and the forgot-password queue (no password is stored anywhere)
+  await store.savePersonNotes("C@x.in", "Prefers evenings"); assert.equal((await people.getPerson(C))?.notes, "Prefers evenings");
+  assert.equal(await store.findEmailByIdentifier("c@x.in"), "c@x.in"); assert.equal(await store.findEmailByIdentifier("+91 98765 43210"), "c@x.in"); assert.equal(await store.findEmailByIdentifier("nobody@x.in"), undefined);
+  assert.equal(await store.addPasswordReset("c@x.in", "c@x.in"), true); assert.equal(await store.addPasswordReset("C@x.in", "again"), false, "one open request per person");
+  assert.equal(await store.countOpenPasswordResets(), 1); assert.equal((await store.listOpenPasswordResets())[0].name, "New Cust");
+  await store.resolvePasswordResets("c@x.in"); assert.equal(await store.countOpenPasswordResets(), 0);
+  await store.setMustChangePassword(C, true); assert.equal((await store.findUser(C))?.must_change_password, true);
+  const cols = (await (await getDb()).query<{ column_name: string }>("select column_name from information_schema.columns where table_schema='public' and column_name ilike '%password%'")).map((r) => r.column_name);
+  assert.deepEqual(cols.sort(), ["must_change_password"], "no table keeps a password");
+  console.log("ok  notes save, forgot-password queue (one open per person), forced password change flag, no password column anywhere");
+  assert.equal((await people.deletePerson(C, O)).ok, true); assert.equal(await people.getPerson(C), undefined);
+  console.log("ok  delete a person removes their login record");
   const approvedBefore = (await store.listApproved()).length;
   assert.ok(approvedBefore > 0);
   const gone = await store.resetAllData();

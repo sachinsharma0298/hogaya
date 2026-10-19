@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -30,9 +30,9 @@ export default function PersonPage() {
   const p = data?.person;
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState("");
-  const [notes, setNotes] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string | null>(null); // what is typed in the notes box (null = untouched)
+  const notes = draft ?? p?.notes ?? "";
   const [editing, setEditing] = useState(false);
-  useEffect(() => { if (p && notes === null) setNotes(p.notes); }, [p, notes]);
 
   async function post(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action);
@@ -118,8 +118,8 @@ export default function PersonPage() {
 
           <section className="rounded-3xl border bg-card p-5">
             <h2 className="text-base font-semibold">Operator notes</h2>
-            <textarea aria-label="Operator notes" value={notes ?? ""} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={4000} placeholder="Private notes. Only you see these." className="mt-2 w-full rounded-xl border bg-background p-3 text-sm" disabled={!p.email} />
-            <Button type="button" disabled={busy === "notes" || !p.email || notes === p.notes} onClick={() => post("notes", { notes })} className="mt-2 h-9 rounded-xl text-sm">{busy === "notes" ? <Loader2 className="size-4 animate-spin" /> : "Save notes"}</Button>
+            <textarea aria-label="Operator notes" value={notes} onChange={(e) => setDraft(e.target.value)} rows={4} maxLength={4000} placeholder="Private notes. Only you see these." className="mt-2 w-full rounded-xl border bg-background p-3 text-sm" disabled={!p.email} />
+            <Button type="button" disabled={busy === "notes" || !p.email || draft === null || draft === p.notes} onClick={() => post("notes", { notes })} className="mt-2 h-9 rounded-xl text-sm">{busy === "notes" ? <Loader2 className="size-4 animate-spin" /> : "Save notes"}</Button>
           </section>
 
           <section className="rounded-3xl border bg-card p-5">
