@@ -28,10 +28,11 @@ export function canonPhone(raw: unknown): string {
 
 export const phoneCountry = (e164: string): CountryCode | undefined => parsePhoneNumberFromString(e164)?.country;
 
-/** Countries Fo is known to call. The Fo spec does not say it supports international calls, so only India by default.
- *  Add more (e.g. "IN,KE") in NEXT_PUBLIC_FO_CALL_COUNTRIES once Fo confirms. */
-const CALL_COUNTRIES = (process.env.NEXT_PUBLIC_FO_CALL_COUNTRIES ?? "IN").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
-export const foMayCall = (e164: string) => { const c = phoneCountry(e164); return Boolean(c) && CALL_COUNTRIES.includes(c as string); };
+/** Fo can call any country with a full E.164 number. Unset or "ALL" allows every country. To restrict, list countries
+ *  (e.g. "IN,KE") in NEXT_PUBLIC_FO_CALL_COUNTRIES: only then does the "Fo may not call this country" warning and block apply. */
+const RAW_COUNTRIES = (process.env.NEXT_PUBLIC_FO_CALL_COUNTRIES ?? "ALL").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+const ANY_COUNTRY = RAW_COUNTRIES.length === 0 || RAW_COUNTRIES.includes("ALL");
+export const foMayCall = (e164: string) => { if (ANY_COUNTRY) return Boolean(toE164(e164)); const c = phoneCountry(e164); return Boolean(c) && RAW_COUNTRIES.includes(c as string); };
 export const FO_COUNTRY_WARNING = "Fo may not call this country";
 
 export const maskPhone = (e164: string) => (e164 ? `•••• ${e164.replace(/\D/g, "").slice(-4)}` : "");

@@ -9,5 +9,6 @@ assert.equal(toE164("4718795772"), null, "a 10-digit number is Indian and this o
 assert.equal(toE164("12345"), null);
 assert.equal(canonPhone("0000000009"), "+910000000009"); // stored test numbers still compare
 assert.equal(foMayCall("+919876543210"), true);
-assert.equal(foMayCall("+254718795772"), false, "Kenya is not on the default call list");
+assert.equal(foMayCall("+254718795772"), true, "any country is allowed by default");
+assert.equal(foMayCall("+12"), false, "an invalid number is never callable");
 console.log("ok  phone numbers: E.164, international, India default, Kenya warned");

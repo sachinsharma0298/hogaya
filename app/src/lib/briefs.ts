@@ -206,7 +206,7 @@ export function buildCustomerBrief(i: {
       ? "After describing both, say clearly which one Hogaya recommends and why, in one simple sentence. Then ask which one they want. Only a clear choice counts. They may choose either option, neither, or say they need time."
       : "Say that this is the one Hogaya recommends and why, in one simple sentence. Then ask if they want it. Only a clear yes counts.",
     "",
-    "Say that we will confirm with the provider and that the 4-digit service code will show in the app. Do not make up or say any code.",
+    "Say that we will confirm with the provider and that the service code will show in the app. Do not make up or say any code.",
     "Never share the provider's phone number. Aim for under 3 minutes. Record only what the customer actually said.",
     "",
     "After the call, end your reply with only this JSON: {confirmed, preferred_option, notes}",
@@ -273,7 +273,7 @@ export function buildBookingBrief(i: {
     "Do these in order:",
     "1. Confirm the slot and the visit charge with the provider.",
     `2. Now share the address, and only now: ${i.address}, ${i.sector}, Noida. Do not share the customer's phone number or any other detail.`,
-    "3. Tell the provider: the customer will give them a 4-digit code at the door. Ask them to ask for it and remember it. You do not have the code. Never say, guess or hint at any code.",
+    "3. Tell the provider: the customer will give them a service code at the door. Ask them to enter it in the Hogaya Pro app. Never mention how long the code is. You do not have the code. Never say, guess or hint at any code.",
     "4. Ask them to confirm clearly that they will come.",
     "",
     TIME_WORDS,
@@ -382,7 +382,7 @@ export function buildArrivalBrief(i: { providerPhone: string; providerName?: str
     "",
     "Do these in order:",
     "1. Ask if they have reached the customer's place.",
-    "2. Ask them for the 4-digit code the customer gave them at the door. Ask them to say it digit by digit, then wait for them to say it.",
+    "2. Ask them for the service code the customer gave them at the door. Ask them to say it digit by digit, then wait for them to say it. Never mention how long the code is.",
     "",
     "IMPORTANT: you do NOT have the code. Never say, read out, guess, hint at or confirm any code. If they ask what the code is, say you cannot tell them and they must ask the customer at the door.",
     "Write down exactly the digits the provider says (in numbers) and the words they used. If they cannot give a code, say so. Do not share the customer's name, phone number or address.",
@@ -390,7 +390,7 @@ export function buildArrivalBrief(i: { providerPhone: string; providerName?: str
     "",
     "After the call, end your reply with only this JSON: {arrived, provider_gave_code, code_digits, notes}",
     "- arrived: true if they said they are at the customer's place, false if not, null if unclear",
-    "- provider_gave_code: true only if the provider actually said a 4-digit code",
+    "- provider_gave_code: true only if the provider actually said a code",
     "- code_digits: the digits the provider said, exactly as heard, else null",
   ].join("\n");
 }
