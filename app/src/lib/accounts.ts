@@ -67,3 +67,33 @@ export async function deleteAllAuthUsersExceptOperator(): Promise<number> {
   }
   return removed;
 }
+
+/** The Supabase Auth user id for an email (looked up through the admin API; there is no search by email, so we page through). */
+export async function findAuthUserIdByEmail(email: string): Promise<string | undefined> {
+  const e = email.toLowerCase();
+  if (!accountsAvailable()) {
+    if ((await (await import("./db")).getDb()).engine !== "pglite") return undefined;
+    return (await q<{ id: string }>("select id from auth.users where lower(email)=$1", [e]))[0]?.id;
+  }
+  const admin = supabaseAdmin();
+  for (let page = 1; page < 50; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    const hit = (data?.users ?? []).find((u) => (u.email ?? "").toLowerCase() === e);
+    if (hit) return hit.id;
+    if ((data?.users ?? []).length < 1000) break;
+  }
+  return undefined;
+}
+
+/** Remove the login that belongs to an email (a Pro applicant may have a login but no profile yet). */
+export async function deleteAuthUserByEmail(email: string): Promise<void> {
+  const id = email ? await findAuthUserIdByEmail(email) : undefined;
+  if (id) await deleteAuthUsers([id]);
+}
+
+/** Set a new password in Supabase Auth (it is hashed there; we never keep or log it). `temporary` also marks the account so the person must choose their own at the next sign-in. */
+export async function setAuthPassword(id: string, password: string, temporary: boolean): Promise<string | null> {
+  if (!accountsAvailable()) return "Setting passwords needs Supabase (not available here).";
+  const { error } = await supabaseAdmin().auth.admin.updateUserById(id, { password, app_metadata: { must_change_password: temporary } });
+  return error ? "Could not set the password." : null;
+}

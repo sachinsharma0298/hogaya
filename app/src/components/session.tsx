@@ -8,6 +8,9 @@ export interface SessionUser {
   name: string;
   phone: string; // the person's own number (empty for the operator and demo Pros)
   provider_id?: string;
+  review: "pending" | "approved" | "rejected"; // the operator's decision about this person
+  approval_notice: boolean; // true until they have seen "Approved by Hogaya"
+  must_change_password: boolean; // the operator reset their password: they must choose a new one
 }
 
 /** The demo session: who is logged in. `loading` is true until the first answer arrives. */

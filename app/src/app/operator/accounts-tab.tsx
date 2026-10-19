@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { StatusBadge } from "@/components/status-badge";
 import { usePoll } from "@/lib/use-poll";
 
-interface Account { id: string; role: string; name: string; email: string; phone: string; provider_id?: string }
+interface Account { status?: string; id: string; role: string; name: string; email: string; phone: string; provider_id?: string }
 
 /** Customers and Pros with a login. You create the account and tell the person their password; nobody else can take these emails. */
 export function AccountsTab() {
@@ -61,7 +63,7 @@ export function AccountsTab() {
           <ul className="mt-4 divide-y text-sm">
             {data.accounts.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span><b>{a.name || "(no name)"}</b> <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.role}</span><span className="block text-xs text-foreground/70">{a.email} {a.phone && `· ${a.phone}`}</span></span>
+                <span>{a.role === "operator" ? <b>{a.name || "(no name)"}</b> : <Link href={`/operator/people/${encodeURIComponent(a.id)}`} className="font-bold underline-offset-4 hover:underline">{a.name || "(no name)"}</Link>} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.role}</span>{a.role !== "operator" && <StatusBadge status={a.status} />}<span className="block text-xs text-foreground/70">{a.email} {a.phone && `· ${a.phone}`}</span></span>
                 {a.role === "operator" ? <span className="text-[11px] text-foreground/50">Can’t be deleted</span>
                   : <button type="button" onClick={() => remove(a)} className="rounded-lg border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10">Delete</button>}
               </li>

@@ -8,7 +8,7 @@ import { toE164 } from "@/lib/phone";
 import { isOperatorPhone, OPERATOR_PHONE_ERROR } from "@/lib/store";
 import { decideLive, MAX_REQUESTS_PER_DAY, MAX_REQUESTS_PER_USER_PER_DAY } from "@/lib/live";
 import { DRY_RUN } from "@/lib/mode";
-import { getProviders, insertRequest, listRequests, requestCounts } from "@/lib/store";
+import { getProviders, insertRequest, listApproved, listRequests, requestCounts } from "@/lib/store";
 
 export const maxDuration = 300;
 
@@ -17,7 +17,8 @@ export async function GET() {
   if ("error" in auth) return auth.error;
   kickAll(); // while the console is open it also keeps the bookings moving
   const config = { agentMode: MODE, dryRun: DRY_RUN, realSteps: MODE === "real" ? REAL_STEPS : { provider: false, customer: false, booking: false, reconfirm: false, arrival: false, on_the_way: false } };
-  return NextResponse.json({ requests: await listRequests(), providers: await getProviders(), config });
+  const onList = new Set((await listApproved()).filter((a) => a.kind === "pro").map((a) => a.phone));
+  return NextResponse.json({ requests: await listRequests(), providers: (await getProviders()).map((p) => (p.demo ? p : { ...p, review_status: onList.has(p.phone) ? "approved" : "rejected" })), config });
 }
 
 export async function POST(req: Request) {

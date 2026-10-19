@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/lib/categories";
+import { PRO_JOIN_CONSENT } from "@/lib/consent";
 import { catLabel } from "@/app/operator/booking-list";
 
 /** Pros apply here. Nothing happens on the phone until Hogaya approves the application. */
@@ -61,7 +62,7 @@ export default function ProJoin() {
           </div>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 size-4" />
-            <span>I agree to receive AI phone calls from Fo on behalf of Hogaya.</span>
+            <span>{PRO_JOIN_CONSENT}</span>
           </label>
           {error && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={busy} className="h-12 w-full rounded-2xl text-base">{busy ? <Loader2 className="size-4 animate-spin" /> : "Send my application"}</Button>

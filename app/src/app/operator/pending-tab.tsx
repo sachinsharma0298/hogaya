@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { FO_COUNTRY_WARNING, foMayCall, prettyPhone } from "@/lib/phone";
+import Link from "next/link";
+import { StatusBadge } from "@/components/status-badge";
+import { prettyPhone } from "@/lib/phone";
 import { catLabel } from "./booking-list";
 import type { PendingCustomer, PendingPro } from "@/lib/store";
 
@@ -23,7 +25,6 @@ export function PendingTab({ data }: { data?: PendingData }) {
     setMsg(res.ok ? `${name}: ${action === "approve" ? "approved" : "rejected"}.` : b.error ?? "Failed.");
   }
   if (!data) return <StateBox title="Loading…" />;
-  const warn = (phone: string) => !foMayCall(phone) && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">⚠ {FO_COUNTRY_WARNING}</span>;
   const buttons = (kind: "customers" | "pros", id: string, name: string) => (
     <div className="flex shrink-0 gap-2">
       <Button type="button" onClick={() => act(kind, id, "approve", name)} className="h-8 rounded-lg text-xs">Approve</Button>
@@ -40,7 +41,7 @@ export function PendingTab({ data }: { data?: PendingData }) {
         <ul className="mt-3 divide-y">
           {data.customers.map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-              <div><p className="font-semibold">{c.name || "(no name)"}</p><p className="text-xs text-foreground/75">{c.email} · {c.phone ? prettyPhone(c.phone) : "no phone"}{c.phone && warn(c.phone)}</p><p className="text-xs text-foreground/60">Signed up {when(c.created_at)}</p></div>
+              <div><p className="font-semibold"><Link href={`/operator/people/${encodeURIComponent(c.id)}`} className="underline-offset-4 hover:underline">{c.name || "(no name)"}</Link><StatusBadge status="pending" /></p><p className="text-xs text-foreground/75">{c.email} · {c.phone ? prettyPhone(c.phone) : "no phone"}</p><p className="text-xs text-foreground/60">Signed up {when(c.created_at)}</p></div>
               {buttons("customers", c.id, c.name || c.email)}
             </li>
           ))}
@@ -54,8 +55,8 @@ export function PendingTab({ data }: { data?: PendingData }) {
           {data.pros.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-3 py-3 text-sm">
               <div>
-                <p className="font-semibold">{p.name}</p>
-                <p className="text-xs text-foreground/75">{p.email} · {prettyPhone(p.phone)}{warn(p.phone)}</p>
+                <p className="font-semibold"><Link href={`/operator/people/${encodeURIComponent(p.id)}`} className="underline-offset-4 hover:underline">{p.name}</Link><StatusBadge status="pending" /></p>
+                <p className="text-xs text-foreground/75">{p.email} · {prettyPhone(p.phone)}</p>
                 <p className="text-xs text-foreground/75">{p.categories.map(catLabel).join(", ")} · {p.area} · {p.visit_charge}</p>
                 <p className="text-xs text-foreground/60">Agreed to AI calls {when(p.consent_at)} · applied {when(p.created_at)}</p>
               </div>

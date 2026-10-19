@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { toE164 } from "@/lib/phone";
 import { isCategory, type Category } from "@/lib/categories";
 import { requireRole } from "@/lib/guard";
+import { PRO_ONBOARD_CONSENT } from "@/lib/consent";
 import { createApprovedPro } from "@/lib/onboard";
 import { findProviderByEmail, getProviders, isOperatorPhone, listProviders, OPERATOR_PHONE_ERROR } from "@/lib/store";
 
@@ -32,6 +33,6 @@ export async function POST(req: Request) {
   const existing = await listProviders();
   if (existing.some((p) => p.phone === phone) || (await findProviderByEmail(email))) return NextResponse.json({ error: "A Pro with this phone or email already exists." }, { status: 409 });
 
-  const p = await createApprovedPro({ name, phone, email, area, visit, categories, consentDate, by: auth.user.email ?? auth.user.name, note: "Onboarded as a Pro" });
+  const p = await createApprovedPro({ name, phone, email, area, visit, categories, consentDate, consentText: PRO_ONBOARD_CONSENT, by: auth.user.email ?? auth.user.name, note: "Onboarded as a Pro" });
   return NextResponse.json({ ok: true, provider: { id: p.id, name: p.name } });
 }

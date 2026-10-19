@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { accountsAvailable, createAuthUser, MAX_SIGNUPS_PER_HOUR, reservedEmail, signupsLastHour, validPassword } from "@/lib/accounts";
 import { isCategory, type Category } from "@/lib/categories";
+import { PRO_JOIN_CONSENT } from "@/lib/consent";
 import { toE164 } from "@/lib/phone";
 import { addPendingPro, isOperatorPhone, listProviders, OPERATOR_PHONE_ERROR, pendingProExists } from "@/lib/store";
 
@@ -27,6 +28,6 @@ export async function POST(req: Request) {
   if ((await signupsLastHour()) >= MAX_SIGNUPS_PER_HOUR) return NextResponse.json({ error: "Too many sign-ups right now. Please try again later." }, { status: 429 });
   const res = await createAuthUser({ email, password: b.password, name, phone });
   if (!res.ok) return NextResponse.json({ error: res.exists ? "An account with this email already exists. Sign in, or use a different email." : "Could not create your account." }, { status: res.exists ? 409 : 500 });
-  await addPendingPro({ id: `pp-${Math.random().toString(36).slice(2, 8)}`, name, email, phone, categories, area, visit_charge: `₹${visit}`, consent_at: new Date().toISOString() });
+  await addPendingPro({ id: `pp-${Math.random().toString(36).slice(2, 8)}`, name, email, phone, categories, area, visit_charge: `₹${visit}`, consent_at: new Date().toISOString(), consent_text: PRO_JOIN_CONSENT });
   return NextResponse.json({ ok: true });
 }

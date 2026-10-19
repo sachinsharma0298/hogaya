@@ -3,9 +3,15 @@ export type { Category };
 
 /** Accounts are Supabase Auth users (email magic link or Google). The role is set by our server: the operator is the one email in OPERATOR_EMAIL. */
 export type Role = "customer" | "pro" | "operator";
+export type Review = "pending" | "approved" | "rejected";
 export interface User {
   id: string;
   role: Role;
+  review?: Review; // the operator's decision about this person (read from the database; saveUser never changes it after sign-up)
+  reviewed_at?: string;
+  reviewed_by?: string;
+  must_change_password?: boolean; // set when the operator resets the password: the person must choose a new one at their next sign-in
+  approval_seen?: boolean; // false = show "Approved by Hogaya" once
   name: string;
   phone: string;
   email?: string;
@@ -27,7 +33,9 @@ export interface Provider {
   phone: string;
   consent_ai_call: boolean;
   consent_date: string;
+  consent_text?: string; // the exact wording the Pro agreed to
   opt_out: boolean;
+  review_status?: Review; // operator console only: Approved while on the approved list, Rejected after the operator rejects
   reliability: number; // 0-100, measured
   on_time_pct: number;
   jobs: number;

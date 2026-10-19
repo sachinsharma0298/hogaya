@@ -9,6 +9,7 @@ type Denied = { error: NextResponse };
 export async function requireRole(...roles: Role[]): Promise<{ user: User } | Denied> {
   const user = await getSessionUser();
   if (!user) return { error: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
+  if (user.must_change_password && user.role !== "operator") return { error: NextResponse.json({ error: "Please choose a new password first.", must_change_password: true }, { status: 403 }) };
   if (!roles.includes(user.role)) return { error: NextResponse.json({ error: "You do not have access to this." }, { status: 403 }) };
   return { user };
 }
@@ -17,6 +18,7 @@ export async function requireRole(...roles: Role[]): Promise<{ user: User } | De
 export async function requireBookingAccess(id: string, opts: { customerOnly?: boolean } = {}): Promise<{ user: User; request: HogayaRequest } | Denied> {
   const user = await getSessionUser();
   if (!user) return { error: NextResponse.json({ error: "Please sign in." }, { status: 401 }) };
+  if (user.must_change_password && user.role !== "operator") return { error: NextResponse.json({ error: "Please choose a new password first.", must_change_password: true }, { status: 403 }) };
   const request = await getRequest(id);
   const owner = Boolean(request) && request!.customer.user_id === user.id; // the operator can book as a customer too
   const operator = user.role === "operator" && !opts.customerOnly;

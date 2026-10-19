@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FO_COUNTRY_WARNING } from "@/lib/phone";
+import Link from "next/link";
+import { StatusBadge } from "@/components/status-badge";
 import { usePoll } from "@/lib/use-poll";
 
-interface Approved { callable?: boolean; id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string }
+interface Approved { person_key?: string; status?: string; callable?: boolean; id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string }
 
 /** The only phone numbers a LIVE Fo call may ever reach. Anyone not here gets simulated calls. */
 export function ApprovedTab() {
@@ -87,7 +88,7 @@ export function ApprovedTab() {
             {data.approved.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                 <div>
-                  <p className="font-semibold">{a.name} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.kind}</span>{a.callable === false && <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">⚠ {FO_COUNTRY_WARNING}</span>}</p>
+                  <p className="font-semibold">{a.person_key ? <Link href={`/operator/people/${encodeURIComponent(a.person_key)}`} className="underline-offset-4 hover:underline">{a.name}</Link> : a.name} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.kind}</span><StatusBadge status={a.status ?? "approved"} /></p>
                   <p className="text-xs text-foreground/75">•••• {a.phone.slice(-4)}{a.email ? ` · ${a.email}` : ""} · consent {a.consent_at.slice(0, 10)} · by {a.added_by}</p>
                   {a.note && <p className="text-xs text-foreground/60">{a.note}</p>}
                 </div>

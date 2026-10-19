@@ -1,9 +1,9 @@
 // All data lives in Postgres (Supabase in production, an embedded Postgres locally). See src/lib/db.ts and supabase/migrations.
 // The shape the rest of the app uses (HogayaRequest with its calls and events inside) is rebuilt from the tables here.
 import type { Category } from "./categories";
-import { canonPhone } from "./phone";
+import { canonPhone, toE164 } from "./phone";
 import { iso, jsonParam, pgArray, q, tx, type Queryable, type Row } from "./db";
-import type { CallRecord, HogayaRequest, Provider, Role, Settings, User } from "./types";
+import type { CallRecord, HogayaRequest, Provider, Review, Role, Settings, User } from "./types";
 
 // ---- simulated providers (never stored, never called) ----------------------------------------------------
 // Used only for "Demo: simulated calls" bookings. They are not people: they exist so the flow can be shown to anyone.
@@ -35,7 +35,7 @@ function providerFromRow(r: Row): Provider {
     categories: categories.length ? (categories as Category[]) : [r.category as Category],
     area: (r.area as string) || undefined, visit_charge: (r.visit_charge as string) || undefined,
     phone: r.phone as string, email: (r.email as string) || undefined,
-    consent_ai_call: r.consent_ai_call as boolean, consent_date: r.consent_date as string, opt_out: r.opt_out as boolean,
+    consent_ai_call: r.consent_ai_call as boolean, consent_date: r.consent_date as string, consent_text: (r.consent_text as string) || undefined, opt_out: r.opt_out as boolean,
     reliability: r.reliability as number, on_time_pct: r.on_time_pct as number, jobs: r.jobs as number,
     no_shows: r.no_shows as number, demo: r.demo as boolean,
     onboarded_by: (r.onboarded_by as string) || undefined, onboarded_at: iso(r.onboarded_at), verified: r.onboarded_at != null,
@@ -44,15 +44,15 @@ function providerFromRow(r: Row): Provider {
 
 async function writeProvider(c: Queryable, p: Provider, insert: boolean) {
   const cols = [p.id, p.name, p.category, pgArray(p.categories ?? [p.category]), p.area ?? "", p.visit_charge ?? "", p.phone, p.email ?? "",
-    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null];
+    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null, p.consent_text ?? ""];
   if (insert) {
     await c.query(
-      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at)
-       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz)`, cols);
+      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at,consent_text)
+       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz,$19)`, cols);
   } else {
     await c.query(
       `update providers set name=$2,category=$3,categories=$4::text[],area=$5,visit_charge=$6,phone=$7,email=$8,consent_ai_call=$9,consent_date=$10,opt_out=$11,
-       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz where id=$1`, cols);
+       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz,consent_text=$19 where id=$1`, cols);
   }
 }
 
@@ -246,6 +246,8 @@ export async function resetAllData(): Promise<{ removedRequests: number; removed
     await c.query("delete from requests"); // calls, events and private details go with them
     await c.query("delete from providers");
     await c.query("delete from pending_pros");
+    await c.query("delete from person_notes");
+    await c.query("delete from password_resets");
     await c.query("delete from approved_numbers");
     out.removedAccounts = (await c.query<{ id: string }>("delete from profiles where role <> 'operator' returning id")).length;
     await c.query("update settings set autopilot=false, simulate_no_reconfirm=false where id=1");
@@ -339,6 +341,8 @@ export async function phoneInUseByOthers(raw: string): Promise<boolean> {
 const userFromRow = (r: Row): User => ({
   id: r.id as string, role: r.role as Role, name: r.name as string, phone: r.phone as string, email: (r.email as string) || undefined,
   provider_id: (r.provider_id as string) || undefined, created_at: iso(r.created_at)!,
+  review: r.review as Review, reviewed_at: iso(r.reviewed_at), reviewed_by: (r.reviewed_by as string) || undefined,
+  must_change_password: Boolean(r.must_change_password), approval_seen: Boolean(r.approval_seen),
 });
 export async function findUser(id: string): Promise<User | undefined> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined;
@@ -372,17 +376,80 @@ export async function listUsers(): Promise<User[]> {
   return (await q("select * from profiles order by created_at")).map(userFromRow);
 }
 export async function saveUser(u: User): Promise<User> {
+  // The review decision is written only when the profile is first created; later changes go through setReviewByEmail.
+  const review = u.review ?? (u.role === "customer" ? "pending" : "approved");
   await q(
-    `insert into profiles (id, role, name, phone, email, provider_id, created_at) values ($1::uuid,$2,$3,$4,$5,$6,$7::timestamptz)
+    `insert into profiles (id, role, name, phone, email, provider_id, created_at, review, reviewed_at, reviewed_by, approval_seen) values ($1::uuid,$2,$3,$4,$5,$6,$7::timestamptz,$8,$9::timestamptz,$10,$11)
      on conflict (id) do update set role=excluded.role, name=excluded.name, phone=excluded.phone, email=excluded.email, provider_id=excluded.provider_id`,
-    [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at]);
-  return u;
+    [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at, review, u.reviewed_at ?? null, u.reviewed_by ?? "", u.approval_seen ?? review !== "approved"]);
+  return (await findUser(u.id)) ?? u;
+}
+
+/** Record the operator's decision on every profile with this email (a person may not have signed in yet: then there is nothing to update). */
+export async function setReviewByEmail(email: string, review: "approved" | "rejected", by: string) {
+  if (!email) return;
+  await q("update profiles set review=$2, reviewed_at=now(), reviewed_by=$3, approval_seen=($2 <> 'approved') where lower(email)=lower($1) and role <> 'operator'", [email, review, by]);
+}
+export async function markApprovalSeen(id: string) {
+  if (/^[0-9a-f-]{36}$/i.test(id)) await q("update profiles set approval_seen=true where id=$1::uuid", [id]);
+}
+export async function setMustChangePassword(id: string, v: boolean) {
+  await q("update profiles set must_change_password=$2 where id=$1::uuid", [id, v]);
+}
+export async function updateProfileDetails(id: string, name: string, phone?: string) {
+  if (phone === undefined) await q("update profiles set name=$2 where id=$1::uuid", [id, name]);
+  else await q("update profiles set name=$2, phone=$3 where id=$1::uuid", [id, name, phone]);
+}
+
+// ---- operator notes and password-reset requests ---------------------------------------------------------
+
+export async function getPersonNotes(email: string): Promise<string> {
+  return ((await q("select notes from person_notes where email=lower($1)", [email]))[0]?.notes as string) ?? "";
+}
+export async function savePersonNotes(email: string, notes: string) {
+  await q("insert into person_notes (email, notes) values (lower($1), $2) on conflict (email) do update set notes=excluded.notes, updated_at=now()", [email, notes]);
+}
+export interface PasswordReset { id: number; email: string; identifier: string; name: string; role: Role | "pro"; created_at: string }
+export async function listOpenPasswordResets(): Promise<PasswordReset[]> {
+  return (await q(
+    `select r.id, r.email, r.identifier, r.created_at,
+            coalesce(nullif(p.name,''), x.name, r.email) as name, coalesce(p.role, 'customer') as role
+       from password_resets r
+       left join profiles p on lower(p.email) = lower(r.email)
+       left join pending_pros x on lower(x.email) = lower(r.email)
+      where r.status='open' order by r.created_at`)).map((r) => ({ id: Number(r.id), email: r.email as string, identifier: r.identifier as string, name: r.name as string, role: r.role as Role, created_at: iso(r.created_at)! }));
+}
+/** One open request per person. Returns false if there was already one. */
+export async function addPasswordReset(email: string, identifier: string): Promise<boolean> {
+  return (await q("insert into password_resets (email, identifier) values (lower($1), $2) on conflict do nothing returning id", [email, identifier.slice(0, 120)])).length > 0;
+}
+export async function resolvePasswordResets(email: string) {
+  await q("update password_resets set status='done', resolved_at=now() where lower(email)=lower($1) and status='open'", [email]);
+}
+export async function countOpenPasswordResets(): Promise<number> {
+  return Number((await q("select count(*)::int n from password_resets where status='open'"))[0]?.n ?? 0);
+}
+/** Who does this email or phone belong to? Returns the account email (profile, Pro application or Pro record). */
+export async function findEmailByIdentifier(raw: string): Promise<string | undefined> {
+  const s = raw.trim();
+  if (!s) return undefined;
+  if (s.includes("@")) {
+    const e = s.toLowerCase();
+    const hit = (await q("select email from profiles where lower(email)=$1 and role <> 'operator' union select email from pending_pros where lower(email)=$1 union select email from providers where lower(email)=$1 and email <> ''", [e]))[0];
+    return hit?.email as string | undefined;
+  }
+  const e = canonPhone(toE164(s) ?? s);
+  if (!e.startsWith("+")) return undefined;
+  const u = (await listUsers()).find((x) => x.role !== "operator" && x.email && canonPhone(x.phone) === e);
+  if (u) return u.email;
+  const x = (await q("select email from pending_pros where phone=$1 union select email from providers where phone=$1 and email <> ''", [e]))[0];
+  return x?.email as string | undefined;
 }
 
 // ---- approval queue (pending customers and Pros) --------------------------------------------------------
 
 export interface PendingCustomer { id: string; name: string; email: string; phone: string; created_at: string }
-export interface PendingPro { id: string; name: string; email: string; phone: string; categories: Category[]; area: string; visit_charge: string; consent_at: string; created_at: string }
+export interface PendingPro { id: string; name: string; email: string; phone: string; categories: Category[]; area: string; visit_charge: string; consent_at: string; consent_text?: string; created_at: string; status?: Review; reviewed_at?: string; reviewed_by?: string }
 
 /** Self-registered customers waiting for the operator: not approved, not rejected, and not someone who applied as a Pro. */
 export async function listPendingCustomers(): Promise<PendingCustomer[]> {
@@ -394,14 +461,15 @@ export async function listPendingCustomers(): Promise<PendingCustomer[]> {
      order by created_at`);
   return rows.map((r) => ({ id: r.id as string, name: r.name as string, email: r.email as string, phone: r.phone as string, created_at: iso(r.created_at)! }));
 }
-export async function setReview(id: string, review: "approved" | "rejected"): Promise<boolean> {
+export async function setReview(id: string, review: "approved" | "rejected", by = ""): Promise<boolean> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
-  return (await q("update profiles set review=$2 where id=$1::uuid and role='customer' returning id", [id, review])).length > 0;
+  return (await q("update profiles set review=$2, reviewed_at=now(), reviewed_by=$3, approval_seen=($2 <> 'approved') where id=$1::uuid and role <> 'operator' returning id", [id, review, by])).length > 0;
 }
 
 const pendingProFromRow = (r: Row): PendingPro => ({
   id: r.id as string, name: r.name as string, email: r.email as string, phone: r.phone as string, categories: r.categories as Category[],
-  area: r.area as string, visit_charge: r.visit_charge as string, consent_at: iso(r.consent_at)!, created_at: iso(r.created_at)!,
+  area: r.area as string, visit_charge: r.visit_charge as string, consent_at: iso(r.consent_at)!, consent_text: (r.consent_text as string) || undefined, created_at: iso(r.created_at)!,
+  status: r.status as Review, reviewed_at: iso(r.reviewed_at), reviewed_by: (r.reviewed_by as string) || undefined,
 });
 export async function listPendingPros(): Promise<PendingPro[]> {
   return (await q("select * from pending_pros where status='pending' order by created_at")).map(pendingProFromRow);
@@ -410,15 +478,22 @@ export async function getPendingPro(id: string): Promise<PendingPro | undefined>
   const r = (await q("select * from pending_pros where id=$1 and status='pending'", [id]))[0];
   return r ? pendingProFromRow(r) : undefined;
 }
+/** The application by id or email, whatever its status (the newest one). */
+export async function findPendingProAny(key: { id?: string; email?: string }): Promise<PendingPro | undefined> {
+  const r = key.id
+    ? (await q("select * from pending_pros where id=$1", [key.id]))[0]
+    : (await q("select * from pending_pros where lower(email)=lower($1) order by created_at desc limit 1", [key.email ?? ""]))[0];
+  return r ? pendingProFromRow(r) : undefined;
+}
 export async function pendingProExists(email: string, phone: string): Promise<boolean> {
   return (await q("select 1 from pending_pros where status='pending' and (lower(email)=lower($1) or phone=$2) limit 1", [email, canonPhone(phone)])).length > 0;
 }
 export async function addPendingPro(p: Omit<PendingPro, "created_at">) {
-  await q("insert into pending_pros (id,name,email,phone,categories,area,visit_charge,consent_at) values ($1,$2,$3,$4,$5::text[],$6,$7,$8::timestamptz)",
-    [p.id, p.name, p.email.toLowerCase(), canonPhone(p.phone), pgArray(p.categories), p.area, p.visit_charge, p.consent_at]);
+  await q("insert into pending_pros (id,name,email,phone,categories,area,visit_charge,consent_at,consent_text) values ($1,$2,$3,$4,$5::text[],$6,$7,$8::timestamptz,$9)",
+    [p.id, p.name, p.email.toLowerCase(), canonPhone(p.phone), pgArray(p.categories), p.area, p.visit_charge, p.consent_at, p.consent_text ?? ""]);
 }
-export async function setPendingProStatus(id: string, status: "approved" | "rejected") {
-  await q("update pending_pros set status=$2 where id=$1", [id, status]);
+export async function setPendingProStatus(id: string, status: "approved" | "rejected", by = "") {
+  await q("update pending_pros set status=$2, reviewed_at=now(), reviewed_by=$3 where id=$1", [id, status, by]);
 }
 
 // ---- Fo sign-in tokens (server only) ---------------------------------------------------------------------
@@ -515,4 +590,20 @@ export async function unlockRequest(id: string, token: string) {
 /** Bookings a tick may need to look at, oldest first (that order is also the queue for the one live-call line). */
 export async function listTickIds(): Promise<string[]> {
   return (await q<{ id: string }>("select id from requests where not archived and state not in ('closed','completed','cancelled') order by created_at asc")).map((r) => r.id);
+}
+
+/** Remove an approved-list entry without touching any login (used when the operator rejects someone). */
+export async function removeApprovedByPhone(kind: "pro" | "customer", phone: string) {
+  await q("delete from approved_numbers where kind=$1 and phone=$2", [kind, canonPhone(phone)]);
+}
+export async function updatePendingPro(id: string, patch: { name?: string; phone?: string; area?: string; visit_charge?: string; categories?: Category[] }) {
+  await q("update pending_pros set name=coalesce($2,name), phone=coalesce($3,phone), area=coalesce($4,area), visit_charge=coalesce($5,visit_charge), categories=coalesce($6::text[],categories) where id=$1",
+    [id, patch.name ?? null, patch.phone ?? null, patch.area ?? null, patch.visit_charge ?? null, patch.categories ? pgArray(patch.categories) : null]);
+}
+/** Delete everything kept about an email that is not a login: Pro applications, notes, reset requests. */
+export async function deletePersonLeftovers(email: string) {
+  if (!email) return;
+  await q("delete from pending_pros where lower(email)=lower($1)", [email]);
+  await q("delete from person_notes where email=lower($1)", [email]);
+  await q("delete from password_resets where lower(email)=lower($1)", [email]);
 }

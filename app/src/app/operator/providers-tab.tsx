@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/lib/categories";
 import type { Provider } from "@/lib/types";
-import { FO_COUNTRY_WARNING, foMayCall } from "@/lib/phone";
+import Link from "next/link";
+import { StatusBadge } from "@/components/status-badge";
 import { catLabel } from "./booking-list";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -101,7 +102,7 @@ export function ProvidersTab({ providers }: { providers: Provider[] }) {
             {shown.map((p) => (
               <li key={p.id} className="rounded-2xl border p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">{p.name}</span>
+                  <span className="text-sm font-semibold"><Link href={`/operator/people/${encodeURIComponent(p.id)}`} className="underline-offset-4 hover:underline">{p.name}</Link><StatusBadge status={p.review_status ?? "approved"} /></span>
                   <span className="flex items-center gap-1 text-sm font-bold"><Star className="size-3.5 fill-primary text-primary" />{p.reliability}</span>
                 </div>
                 <p className="mt-1 text-xs text-foreground/70">{(p.categories ?? [p.category]).map(catLabel).join(", ")} · {p.area} · {p.visit_charge}</p>
@@ -112,7 +113,6 @@ export function ProvidersTab({ providers }: { providers: Provider[] }) {
                 </div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${p.reliability}%` }} /></div>
                 <p className="mt-2 text-xs text-foreground/70">{p.on_time_pct}% on time · {p.jobs} jobs · {p.no_shows ?? 0} no-shows · •••• {p.phone.slice(-4)} · {p.email}</p>
-                {!foMayCall(p.phone) && <p className="mt-1 text-xs font-medium text-amber-800">⚠ {FO_COUNTRY_WARNING}: calls to this Pro will not be sent.</p>}
                 <button type="button" onClick={() => toggleCalls(p)} className="mt-2 rounded-lg border px-2 py-1 text-[11px] font-medium hover:bg-muted">{p.opt_out ? "Allow AI calls again" : "Pause AI calls"}</button>
                 <button type="button" onClick={() => remove(p)} className="ml-2 mt-2 rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10">Delete</button>
               </li>

@@ -9,7 +9,7 @@ import { findProviderByEmail, isOperatorPhone, listUsers, OPERATOR_PHONE_ERROR }
 export async function GET() {
   const auth = await requireRole("operator");
   if ("error" in auth) return auth.error;
-  return NextResponse.json({ accounts: (await listUsers()).map((u) => ({ id: u.id, role: u.role, name: u.name, email: u.email ?? "", phone: u.phone ? `•••• ${u.phone.replace(/\D/g, "").slice(-4)}` : "", provider_id: u.provider_id })), canCreate: accountsAvailable() });
+  return NextResponse.json({ accounts: (await listUsers()).map((u) => ({ id: u.id, role: u.role, name: u.name, email: u.email ?? "", phone: u.phone ? `•••• ${u.phone.replace(/\D/g, "").slice(-4)}` : "", provider_id: u.provider_id, status: u.review ?? "approved" })), canCreate: accountsAvailable() });
 }
 
 export async function POST(req: Request) {
