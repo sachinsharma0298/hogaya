@@ -96,7 +96,6 @@ export default function Landing() {
       </main>
 
       <footer className="mx-auto w-full max-w-5xl px-5 pb-12 pt-6 text-center text-xs text-foreground/70">
-        <p>{t("lp.demo")}</p>
         <p className="mt-2 flex items-center justify-center gap-4">
           <Link href="/login?role=operator" className="underline underline-offset-4">{t("login.role.operator")}</Link>
           <Link href="/login?role=pro" className="underline underline-offset-4">{t("login.role.pro")}</Link>

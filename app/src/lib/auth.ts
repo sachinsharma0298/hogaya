@@ -1,7 +1,7 @@
 // Who is signed in. Production: Supabase Auth (email magic link or Google). The operator is ONE email, set in OPERATOR_EMAIL.
 // Local development only (DEV_LOGIN=1 and no DATABASE_URL): a cookie-based stand-in so the app can be tried without Supabase.
 import { cookies } from "next/headers";
-import { findApprovedCustomerByEmail, findProviderByEmail, findUser, saveUser } from "./store";
+import { findApprovedCustomerByEmail, findProviderByEmail, findUser, getOperatorProfile, saveUser } from "./store";
 import { supabaseConfigured, supabaseServer } from "./supabase/server";
 import type { Role, User } from "./types";
 
@@ -29,14 +29,21 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
   return saveUser({ id: au.id, role, name, phone: existing?.phone || (approved ? `+91${approved.phone}` : approvedPhone ? `+91${approvedPhone}` : String(au.user_metadata?.phone ?? "")), email, provider_id: want.provider_id, created_at: existing?.created_at ?? new Date().toISOString() });
 }
 
+/** The operator's name and phone come from "My profile" (default name: Virat), not from the sign-in email. */
+async function withOperatorProfile(u: User | undefined): Promise<User | undefined> {
+  if (u?.role !== "operator") return u;
+  const p = await getOperatorProfile();
+  return { ...u, name: p.name, phone: p.phone || u.phone };
+}
+
 export async function getSessionUser(): Promise<User | undefined> {
   if (devLoginEnabled()) {
     const id = (await cookies()).get(DEV_COOKIE)?.value;
-    if (id) return findUser(id);
+    if (id) return withOperatorProfile(await findUser(id));
   }
   if (!supabaseConfigured()) return undefined;
   const { data } = await (await supabaseServer()).auth.getUser(); // asks Supabase to verify the token: not just reading a cookie
-  return data.user ? ensureProfile(data.user) : undefined;
+  return data.user ? withOperatorProfile(await ensureProfile(data.user)) : undefined;
 }
 
 export async function setDevSession(userId: string) {

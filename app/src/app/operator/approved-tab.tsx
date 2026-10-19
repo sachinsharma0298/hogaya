@@ -9,7 +9,7 @@ import { usePoll } from "@/lib/use-poll";
 
 interface Approved { id: number; phone: string; kind: "pro" | "customer"; name: string; email: string; consent_at: string; added_by: string; note: string }
 
-/** The only phone numbers a LIVE Fo call may ever reach. Anyone not here gets "Demo: simulated calls". */
+/** The only phone numbers a LIVE Fo call may ever reach. Anyone not here gets simulated calls. */
 export function ApprovedTab() {
   const { data, error } = usePoll<{ approved: Approved[] }>("/api/approved", 4000);
   const [f, setF] = useState({ kind: "customer", name: "", phone: "", email: "", note: "", consent: false });
@@ -32,8 +32,9 @@ export function ApprovedTab() {
     if (b.link) setLink(b.link);
   }
   async function remove(a: Approved) {
-    if (!window.confirm(`Remove ${a.name} (${a.phone}) from the approved list? Live calls to this number stop immediately.`)) return;
-    await fetch(`/api/approved/${a.id}`, { method: "DELETE" });
+    if (!window.confirm(`Delete ${a.name} (•••• ${a.phone.slice(-4)})?\n\nThis removes their approval for live calls and their login${a.kind === "pro" ? " (and the Pro record)" : ""}. It cannot be undone.`)) return;
+    const res = await fetch(`/api/approved/${a.id}`, { method: "DELETE" });
+    if (!res.ok) window.alert((await res.json().catch(() => ({}))).error ?? "Could not delete.");
   }
 
   return (
@@ -88,7 +89,7 @@ export function ApprovedTab() {
                   <p className="text-xs text-foreground/75">•••• {a.phone.slice(-4)}{a.email ? ` · ${a.email}` : ""} · consent {a.consent_at.slice(0, 10)} · by {a.added_by}</p>
                   {a.note && <p className="text-xs text-foreground/60">{a.note}</p>}
                 </div>
-                <button type="button" onClick={() => remove(a)} aria-label={`Remove ${a.name}`} className="rounded-lg border p-2 text-destructive hover:bg-destructive/10"><Trash2 className="size-4" /></button>
+                <button type="button" onClick={() => remove(a)} aria-label={`Delete ${a.name}`} className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"><Trash2 className="size-3.5" />Delete</button>
               </li>
             ))}
           </ul>

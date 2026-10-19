@@ -76,6 +76,11 @@ export function ProvidersTab({ providers }: { providers: Provider[] }) {
     if (!window.confirm(next ? `Stop AI calls to ${p.name}? They will not be matched until you turn them back on.` : `Allow AI calls to ${p.name} again?`)) return;
     await fetch(`/api/providers/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opt_out: next }) });
   }
+  async function remove(p: Provider) {
+    if (!window.confirm(`Delete ${p.name}?\n\nThis removes the Pro, their approval for live calls and their login. It cannot be undone.`)) return;
+    const res = await fetch(`/api/providers/${p.id}`, { method: "DELETE" });
+    if (!res.ok) window.alert((await res.json().catch(() => ({}))).error ?? "Could not delete.");
+  }
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <OnboardForm />
@@ -106,6 +111,7 @@ export function ProvidersTab({ providers }: { providers: Provider[] }) {
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${p.reliability}%` }} /></div>
                 <p className="mt-2 text-xs text-foreground/70">{p.on_time_pct}% on time · {p.jobs} jobs · {p.no_shows ?? 0} no-shows · •••• {p.phone.slice(-4)} · {p.email}</p>
                 <button type="button" onClick={() => toggleCalls(p)} className="mt-2 rounded-lg border px-2 py-1 text-[11px] font-medium hover:bg-muted">{p.opt_out ? "Allow AI calls again" : "Pause AI calls"}</button>
+                <button type="button" onClick={() => remove(p)} className="ml-2 mt-2 rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10">Delete</button>
               </li>
             ))}
           </ul>

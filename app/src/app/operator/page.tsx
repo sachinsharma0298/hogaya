@@ -37,11 +37,13 @@ export default function Operator() {
     setSel(undefined);
   }
   async function resetAll() {
-    if (!window.confirm("Reset demo data?\n\nThis DELETES all bookings, call records and reliability changes and puts the demo providers back to their starting scores.\nYour Fo sign-in and .env.local are kept.\n\nThis cannot be undone. (To just hide bookings, use “Archive all” instead.)")) return;
-    const res = await fetch("/api/reset", { method: "POST" });
+    const typed = window.prompt("Reset ALL data?\n\nThis DELETES every booking, call, event, Pro, approved customer and every account except yours. Your operator account, Fo sign-in and the 10 categories are kept. Nothing is re-added. This cannot be undone.\n\nType RESET to confirm.");
+    if (typed === null) return;
+    if (typed !== "RESET") return setNote("Reset cancelled: you must type RESET exactly.");
+    const res = await fetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: "RESET" }) });
     const b = await res.json().catch(() => ({}));
     setSel(undefined);
-    setNote(res.ok ? `Demo data reset (${b.removedRequests} bookings removed).` : b.error ?? "Reset failed.");
+    setNote(res.ok ? `All data reset: ${b.removedRequests} bookings, ${b.removedProviders} Pros, ${b.removedApproved} approved numbers and ${b.removedAccounts} accounts removed.` : b.error ?? "Reset failed.");
   }
 
   if (session.loading) return <div className="mx-auto max-w-md px-6 py-20"><StateBox title="Loading…" /></div>;
@@ -78,7 +80,8 @@ export default function Operator() {
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <button type="button" onClick={resetAll} className="rounded-lg border border-destructive/40 px-3 py-1.5 text-destructive hover:bg-destructive/10">Reset demo data</button>
+            <button type="button" onClick={resetAll} className="rounded-lg border border-destructive/40 px-3 py-1.5 text-destructive hover:bg-destructive/10">Reset all data</button>
+            <Link href="/operator/profile" className="text-foreground/80 underline-offset-4 hover:underline">My profile{session.user?.name ? ` (${session.user.name})` : ""}</Link>
             <Link href="/" className="text-primary underline-offset-4 hover:underline">Customer site →</Link>
             <button type="button" onClick={async () => { await session.logout(); window.location.assign("/"); }} className="text-foreground/70 underline-offset-4 hover:underline">Log out</button>
           </div>

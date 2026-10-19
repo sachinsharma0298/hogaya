@@ -29,6 +29,12 @@ export function AccountsTab() {
     setF({ role: f.role, name: "", email: "", phone: "", password: "" });
   }
 
+  async function remove(a: Account) {
+    if (!window.confirm(`Delete the login for ${a.name || a.email}?\n\nThey will no longer be able to sign in. It cannot be undone.`)) return;
+    const res = await fetch(`/api/operator/accounts/${a.id}`, { method: "DELETE" });
+    if (!res.ok) window.alert((await res.json().catch(() => ({}))).error ?? "Could not delete.");
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
       <form onSubmit={create} className="space-y-3 self-start rounded-3xl border bg-card p-5">
@@ -55,7 +61,8 @@ export function AccountsTab() {
             {data.accounts.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
                 <span><b>{a.name || "(no name)"}</b> <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.role}</span><span className="block text-xs text-foreground/70">{a.email} {a.phone && `· ${a.phone}`}</span></span>
-                <span className="font-mono text-[10px] text-foreground/50">{a.id.slice(0, 8)}</span>
+                {a.role === "operator" ? <span className="text-[11px] text-foreground/50">Can’t be deleted</span>
+                  : <button type="button" onClick={() => remove(a)} className="rounded-lg border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10">Delete</button>}
               </li>
             ))}
           </ul>

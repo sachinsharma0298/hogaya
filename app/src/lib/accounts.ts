@@ -39,3 +39,31 @@ export async function signupsLastHour(): Promise<number> {
   return Number((await q<{ n: number }>("select count(*)::int n from auth.users where created_at > now() - interval '1 hour'"))[0]?.n ?? 0);
 }
 export const MAX_SIGNUPS_PER_HOUR = Number(process.env.MAX_SIGNUPS_PER_HOUR ?? 30);
+
+/** Remove Supabase Auth logins (their profile rows are already gone). Locally there is no Supabase, so the stand-in table is cleaned instead. */
+export async function deleteAuthUsers(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  if (accountsAvailable()) {
+    for (const id of ids) await supabaseAdmin().auth.admin.deleteUser(id);
+  } else if ((await (await import("./db")).getDb()).engine === "pglite") {
+    await q("delete from auth.users where id = any($1::uuid[])", [`{${ids.join(",")}}`]);
+  }
+}
+
+/** Remove every Auth login except the operator's (used by "Reset all data"). */
+export async function deleteAllAuthUsersExceptOperator(): Promise<number> {
+  const op = operatorEmail();
+  if (!accountsAvailable()) {
+    if ((await (await import("./db")).getDb()).engine !== "pglite") return 0;
+    return (await q("delete from auth.users where lower(coalesce(email,'')) <> $1 returning id", [op])).length;
+  }
+  const admin = supabaseAdmin();
+  let removed = 0;
+  for (let page = 1; page < 50; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    const users = (data?.users ?? []).filter((u) => (u.email ?? "").toLowerCase() !== op);
+    for (const u of users) { await admin.auth.admin.deleteUser(u.id); removed++; }
+    if ((data?.users ?? []).length < 1000) break;
+  }
+  return removed;
+}

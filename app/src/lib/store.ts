@@ -236,13 +236,61 @@ export async function hasActiveLiveCall(): Promise<boolean> {
   return (await q("select 1 from calls where not demo and status in ('calling','waiting_summary','needs_reply','unconfirmed') limit 1")).length > 0;
 }
 
-/** Erase all bookings and call records (operator only). Accounts, Pros, approved numbers and the Fo sign-in are kept. */
-export async function resetDemoData(): Promise<{ removedRequests: number }> {
+/** Erase everything except the operator account, the Fo sign-in, the categories and the database structure (operator only).
+ *  Removes bookings (calls and events go with them), Pros, approved numbers and every other account's profile. The caller removes the Auth logins. */
+export async function resetAllData(): Promise<{ removedRequests: number; removedProviders: number; removedApproved: number; removedAccounts: number }> {
   return tx(async (c) => {
-    const n = (await c.query<{ n: number }>("select count(*)::int as n from requests"))[0].n;
+    const n = async (t: string) => (await c.query<{ n: number }>(`select count(*)::int as n from ${t}`))[0].n;
+    const out = { removedRequests: await n("requests"), removedProviders: await n("providers"), removedApproved: await n("approved_numbers"), removedAccounts: 0 };
     await c.query("delete from requests"); // calls, events and private details go with them
+    await c.query("delete from providers");
+    await c.query("delete from approved_numbers");
+    out.removedAccounts = (await c.query<{ id: string }>("delete from profiles where role <> 'operator' returning id")).length;
     await c.query("update settings set autopilot=false, simulate_no_reconfirm=false where id=1");
-    return { removedRequests: n };
+    return out;
+  });
+}
+
+/** Delete one Pro with their approval and their login profile. Returns the Auth user ids to remove, or undefined if there is no such Pro. */
+export async function deleteProvider(id: string): Promise<{ authIds: string[] } | undefined> {
+  return tx(async (c) => {
+    const p = (await c.query("select phone, email from providers where id=$1 for update", [id]))[0];
+    if (!p) return undefined;
+    await c.query("delete from approved_numbers where kind='pro' and phone=$1", [last10(p.phone as string)]);
+    const gone = await c.query<{ id: string }>("delete from profiles where provider_id=$1 and role <> 'operator' returning id", [id]);
+    await c.query("delete from providers where id=$1", [id]);
+    return { authIds: gone.map((r) => r.id) };
+  });
+}
+
+/** Delete one approved entry. A customer's login goes too, and a Pro entry takes the matching Pro with it. */
+export async function deleteApproved(id: number): Promise<{ authIds: string[] } | undefined> {
+  const a = (await q("select * from approved_numbers where id=$1", [id]))[0];
+  if (!a) return undefined;
+  if (a.kind === "pro") {
+    const pro = (await q("select id from providers where right(regexp_replace(phone,'\\D','','g'),10)=$1 limit 1", [a.phone]))[0];
+    if (pro) return deleteProvider(pro.id as string);
+    await q("delete from approved_numbers where id=$1", [id]);
+    return { authIds: [] };
+  }
+  return tx(async (c) => {
+    await c.query("delete from approved_numbers where id=$1", [id]);
+    const email = (a.email as string) ?? "";
+    const gone = email ? await c.query<{ id: string }>("select id from profiles where lower(email)=lower($1) and role = 'customer'", [email]) : [];
+    for (const g of gone) { await c.query("update requests set customer_id=null where customer_id=$1::uuid", [g.id]); await c.query("delete from profiles where id=$1::uuid", [g.id]); }
+    return { authIds: gone.map((r) => r.id) };
+  });
+}
+
+/** Delete one login profile (never the operator's). Returns false if it does not exist or is the operator. */
+export async function deleteProfile(id: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
+  return tx(async (c) => {
+    const u = (await c.query("select role from profiles where id=$1::uuid for update", [id]))[0];
+    if (!u || u.role === "operator") return false;
+    await c.query("update requests set customer_id=null where customer_id=$1::uuid", [id]);
+    await c.query("delete from profiles where id=$1::uuid", [id]);
+    return true;
   });
 }
 
@@ -256,6 +304,17 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
   const cur = { ...(await getSettings()), ...patch };
   await q("update settings set autopilot=$1, simulate_no_reconfirm=$2 where id=1", [cur.autopilot, cur.simulate_no_reconfirm]);
   return cur;
+}
+
+// ---- operator profile (display name and phone live in settings, so the number never blocks a Pro or customer using it) ----
+
+export const DEFAULT_OPERATOR_NAME = "Virat";
+export async function getOperatorProfile(): Promise<{ name: string; phone: string }> {
+  const r = (await q("select operator_name, operator_phone from settings where id=1"))[0];
+  return { name: ((r?.operator_name as string) || "").trim() || DEFAULT_OPERATOR_NAME, phone: (r?.operator_phone as string) ?? "" };
+}
+export async function saveOperatorProfile(name: string, phone: string) {
+  await q("update settings set operator_name=$1, operator_phone=$2 where id=1", [name, phone]);
 }
 
 // ---- accounts (profiles) ---------------------------------------------------------------------------------

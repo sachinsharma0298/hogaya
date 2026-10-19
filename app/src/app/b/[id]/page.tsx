@@ -89,12 +89,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       <div className="pb-28 md:pb-0">
         <NotificationToast items={r.notifications ?? []} t={t} />
         <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
-        {r.demo && (
-          <div role="note" className="mt-3 rounded-2xl border-2 border-dashed border-primary/50 bg-accent/50 px-4 py-3">
-            <p className="text-sm font-bold">{t("b.demo.banner")}</p>
-            <p className="mt-0.5 text-xs text-foreground/85">{t("b.demo.banner.body")}</p>
-          </div>
-        )}
+        {r.demo && <p role="note" className="mt-2 text-xs text-foreground/70">{t("b.preview.note")}</p>}
 
         {cancelled && <p role="status" className="mt-4 rounded-2xl bg-muted px-4 py-3 text-sm">{t("b.h.cancelled")}</p>}
         {!cancelled && r.state === "paused" && <p role="status" className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{t("b.paused")}</p>}

@@ -86,7 +86,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-              {catLabel(r.category)} · {r.sector} {r.demo && <DemoBadge label="Demo: simulated calls" />}
+              {catLabel(r.category)} · {r.sector} {r.demo && <DemoBadge label="Preview: simulated" />}
             </h2>
             <p className="mt-0.5 text-sm text-foreground/85">{r.problem}</p>
             <p className="mt-1 text-xs text-foreground/65">{r.customer.name} ({customerHint}) · {r.time_window}{r.notes ? ` · note: ${r.notes}` : ""}</p>
@@ -113,7 +113,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
               : <Button onClick={() => control("take_over")} variant="outline" className="h-8 rounded-lg text-xs">Take over manually</Button>}
             {b?.arrival_verified_at && b.outcome !== "completed" && <Button onClick={() => control("new_code")} variant="outline" className="h-8 rounded-lg text-xs">New completion code</Button>}
             {flags.length > 0 && <Button onClick={() => control("clear_flags")} variant="outline" className="h-8 rounded-lg text-xs">Clear flags</Button>}
-            <Button onClick={() => control("fast_forward")} variant="outline" disabled={!bookingActive || !!b?.reconfirmed_at} className="h-8 rounded-lg text-xs">Fast-forward to T–60 <DemoBadge /></Button>
+            <Button onClick={() => control("fast_forward")} variant="outline" disabled={!bookingActive || !!b?.reconfirmed_at} className="h-8 rounded-lg text-xs">Fast-forward to T–60 {!live && <DemoBadge />}</Button>
             <Button onClick={() => { if (window.confirm("Cancel this booking? Nothing more will be called.")) void control("cancel"); }} variant="outline" disabled={ended} className="h-8 rounded-lg text-xs text-destructive">Cancel booking</Button>
             <Button onClick={() => control(r.archived ? "unarchive" : "archive")} variant="outline" className="h-8 rounded-lg text-xs">{r.archived ? "Unarchive" : "Archive"}</Button>
           </div>
@@ -197,17 +197,22 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
         <h2 className="text-sm font-semibold">Steps</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button onClick={() => run("reconfirm", "reconfirm", undefined, "Started. Watch the timeline for progress.")} disabled={!bookingActive || inflight || busy !== null} className="rounded-xl">
-            {busy === "reconfirm" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <RefreshCw className="mr-2 size-4" />} Reconfirm now {(r.demo || !cfg.realSteps.reconfirm) && <DemoBadge />}
+            {busy === "reconfirm" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <RefreshCw className="mr-2 size-4" />} Reconfirm now {!live && (r.demo || !cfg.realSteps.reconfirm) && <DemoBadge />}
           </Button>
+          {!live && (
+            <>
           <Button onClick={() => control("fast_forward_confirm")} disabled={!bookingActive || !!b?.on_the_way_at} variant="outline" className="rounded-xl">
             <ShieldCheck className="mr-2 size-4" /> Fast-forward to T–30 (confirmation call) <DemoBadge />
           </Button>
           <Button onClick={() => run("check-on-way", "check-on-way", undefined, "Demo: checked.")} disabled={!bookingActive || inflight || busy !== null} variant="outline" className="rounded-xl">
             <PhoneCall className="mr-2 size-4" /> Confirmation call now (simulated) <DemoBadge />
           </Button>
+            </>
+          )}
           <Button onClick={() => run("completed", "outcome", { outcome: "completed" }, "Recorded as completed.")} disabled={!b || !!b.outcome || busy !== null} variant="outline" className="rounded-xl"><CheckCircle2 className="mr-2 size-4" /> Mark completed</Button>
           <Button onClick={() => run("no_show", "outcome", { outcome: "no_show" }, "Recorded as a no-show.")} disabled={!b || !!b.outcome || busy !== null} variant="outline" className="rounded-xl"><UserX className="mr-2 size-4" /> Mark no-show</Button>
         </div>
+        {!live && (
         <label className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-dashed px-4 py-3 text-sm">
           <span>
             <span className="flex items-center gap-2 font-medium">Simulate no reconfirm <DemoBadge /></span>
@@ -215,6 +220,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
           </span>
           <Switch checked={settings.simulate_no_reconfirm} onCheckedChange={toggleSim} aria-label="Simulate no reconfirm" />
         </label>
+        )}
       </section>
 
       {/* Options side by side */}

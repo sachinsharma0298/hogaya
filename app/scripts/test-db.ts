@@ -125,8 +125,20 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   await store.writeFoAuth({ tokens: { access_token: "x" } }); await store.writeFoAuth({ authUrl: "u" });
   assert.deepEqual(Object.keys(await store.readFoAuth()).sort(), ["authUrl", "tokens"]);
   console.log("ok  Fo tokens stored server-side");
-  const gone = await store.resetDemoData();
+  // operator profile: default name Virat; the operator's phone lives in settings, so it never blocks a Pro or customer using that number
+  assert.deepEqual(await store.getOperatorProfile(), { name: "Virat", phone: "" });
+  await store.saveOperatorProfile("Asha", "9000000001");
+  assert.deepEqual(await store.getOperatorProfile(), { name: "Asha", phone: "9000000001" });
+  assert.equal((await (await getDb()).query("select 1 from profiles where phone like '%9000000001'")).length, 0);
+  console.log("ok  operator profile: default name, edits saved, phone not stored on a profile");
+  const approvedBefore = (await store.listApproved()).length;
+  assert.ok(approvedBefore > 0);
+  const gone = await store.resetAllData();
   assert.equal(gone.removedRequests, 4); assert.equal((await store.listRequests()).length, 0);
+  assert.equal((await store.listProviders()).length, 0); assert.equal((await store.listApproved()).length, 0);
+  assert.equal((await store.listUsers()).filter((u) => u.role !== "operator").length, 0);
+  assert.equal((await (await getDb()).query("select count(*)::int n from categories"))[0].n, 10);
+  console.log("ok  reset all data keeps the operator and the 10 categories, removes everything else");
   console.log("ALL PASSED");
   process.exit(0);
 })().catch((e) => { console.error("FAILED:", e); process.exit(1); });
