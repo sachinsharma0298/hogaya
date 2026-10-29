@@ -72,8 +72,8 @@ export function BookingList({
             className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <select aria-label="Filter by category" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="h-9 flex-1 rounded-xl border bg-background px-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Filter by category" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="h-9 min-w-0 flex-1 rounded-xl border bg-background px-2 text-sm">
             <option value="all">All categories</option>
             {CATEGORIES.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}
           </select>

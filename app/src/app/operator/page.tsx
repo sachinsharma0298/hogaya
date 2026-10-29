@@ -114,7 +114,7 @@ export default function Operator() {
         {tab === "accounts" && <AccountsTab />}
         {tab === "resets" && <ResetsTab rows={resets} />}
         {data && tab === "bookings" && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
             <BookingList all={all} shown={shown} selectedId={r?.id} onSelect={setSel} filters={filters} setFilters={setFilters} onArchiveAll={archiveAll} />
             <div>
               {r ? <BookingDetail key={r.id} r={r} data={data} settings={settings} /> : <StateBox title="No booking selected" body="Pick a booking on the left, or clear the filters." />}
