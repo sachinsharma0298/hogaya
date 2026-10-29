@@ -15,6 +15,7 @@
     "test:state": "tsx scripts/test-state.ts",
     "test:flow": "tsx scripts/test-flow.ts",
     "test:briefs": "tsx scripts/test-briefs.ts",
+    "check:i18n": "tsx scripts/check-i18n.ts",
     "test:db": "tsx scripts/test-db.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts"
   },

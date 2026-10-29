@@ -5,7 +5,7 @@ import { useT } from "@/lib/lang";
 import { LANGS } from "@/lib/translations";
 import { useSession } from "@/components/session";
 
-export function Brand({ small, english }: { small?: boolean; english?: boolean }) {
+export function Brand({ small }: { small?: boolean }) {
   const { t } = useT();
   return (
     <Link href="/" className="inline-flex items-center gap-2">
@@ -14,7 +14,7 @@ export function Brand({ small, english }: { small?: boolean; english?: boolean }
       </span>
       <span className="leading-tight">
         <span className="block text-lg font-bold tracking-tight">Hogaya</span>
-        {!small && <span className="block text-xs text-muted-foreground">{english ? "Kaam hogaya. Pakka." : t("brand.tagline")}</span>}
+        {!small && <span className="block text-xs text-muted-foreground">{t("brand.tagline")}</span>}
       </span>
     </Link>
   );
@@ -29,9 +29,9 @@ export function DemoBadge({ label }: { label?: string }) {
 }
 
 export function LangToggle() {
-  const { lang, setLang } = useT();
+  const { lang, setLang, t } = useT();
   return (
-    <div role="group" aria-label="Language" className="inline-flex rounded-full border bg-card p-0.5 text-xs font-medium">
+    <div role="group" aria-label={t("lang.label")} className="inline-flex rounded-full border bg-card p-0.5 text-xs font-medium">
       {LANGS.map((l) => (
         <button
           key={l.id}

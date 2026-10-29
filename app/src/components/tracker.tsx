@@ -30,7 +30,7 @@ export function activeIndex(state: BookingState): number {
 export function Tracker({ state, t }: { state: BookingState; t: T }) {
   const cur = activeIndex(state);
   return (
-    <ol className="grid grid-cols-4 gap-x-2 gap-y-4" aria-label="Progress">
+    <ol className="grid grid-cols-4 gap-x-2 gap-y-4" aria-label={t("tr.progress")}>
       {TRACKER.map((k, i) => {
         const done = i < cur;
         const active = i === cur;

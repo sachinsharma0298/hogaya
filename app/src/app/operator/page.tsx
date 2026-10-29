@@ -76,7 +76,7 @@ export default function Operator() {
       <div className="mx-auto w-full max-w-7xl px-6 py-5">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Brand small english />
+            <Brand small />
             <span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span>
             <nav aria-label="Console sections" className="flex rounded-full border bg-card p-0.5 text-sm font-medium">
               {(["bookings", "pending", "providers", "approved", "accounts", "resets"] as const).map((t) => (

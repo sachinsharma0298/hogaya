@@ -62,7 +62,7 @@ export default function PersonPage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-5">
       <header className="mb-5 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4"><Brand small english /><span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span></div>
+        <div className="flex items-center gap-4"><Brand small /><span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span></div>
         <Link href="/operator" className="flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"><ArrowLeft className="size-4" /> Console</Link>
       </header>
       {error && !p && <StateBox title="Couldn't load this person" body="They may have been deleted." />}
@@ -86,6 +86,21 @@ export default function PersonPage() {
               <Row k={p.status === "rejected" ? "Rejected by" : "Approved by"}>{p.status === "pending" ? "" : p.reviewed_by}</Row>
             </dl>
           </section>
+
+          {p.pro?.pending_changes && (
+            <section className="rounded-3xl border-2 border-amber-300 bg-amber-50 p-5">
+              <h2 className="text-base font-semibold">Pending change <span className="font-normal text-foreground/70">· asked {when(p.pro.pending_changes.requested_at)}</span></h2>
+              <dl className="mt-2 divide-y">
+                {p.pro.pending_changes.categories && <Row k="Categories">{p.pro.categories.map(catLabel).join(", ")} → <b>{p.pro.pending_changes.categories.map(catLabel).join(", ")}</b></Row>}
+                {p.pro.pending_changes.area && <Row k="Area">{p.pro.area} → <b>{p.pro.pending_changes.area}</b></Row>}
+                {p.pro.pending_changes.visit_charge && <Row k="Visit charge">{p.pro.visit_charge} → <b>{p.pro.pending_changes.visit_charge}</b></Row>}
+              </dl>
+              <div className="mt-3 flex gap-2">
+                <Button type="button" disabled={Boolean(busy)} onClick={() => post("approve_changes")} className="h-9 rounded-xl text-sm">Approve change</Button>
+                <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => post("reject_changes")} className="h-9 rounded-xl text-sm text-destructive">Reject change</Button>
+              </div>
+            </section>
+          )}
 
           {p.pro && (
             <section className="rounded-3xl border bg-card p-5">
