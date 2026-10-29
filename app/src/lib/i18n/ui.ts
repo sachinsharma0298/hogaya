@@ -61,6 +61,22 @@ const en: Dict = {
   "lp.price.3.d": "After the visit the pro sends the bill: visit, labour and parts. You see it in your booking.",
   "lp.price.4.t": "Higher than the quote? We flag it",
   "lp.price.4.d": "If the bill is above the quote, Hogaya flags the booking for review. More than 20% above also lowers the pro's reliability score.",
+  // pro sign-up steps
+  "join.steps": "Sign-up steps",
+  "join.stepof": "Step {n} of 3",
+  "join.step.details": "Your details",
+  "join.step.services": "Your services",
+  "join.step.consent": "Consent and review",
+  "join.summary": "Your application",
+  "join.done.msg": "Thanks. Hogaya will review your profile. You'll get job calls once approved.",
+  "join.v.name": "Add your full name.",
+  "join.v.email": "Add a valid email, like name@example.com.",
+  "join.v.phone": "Add a valid phone number with the right country code.",
+  "join.v.password": "Choose a password of 8 to 72 characters.",
+  "join.v.cats": "Pick at least one kind of work you do.",
+  "join.v.area": "Add the area you serve, for example Noida, Sector 62.",
+  "join.v.visit": "Add your visit charge in rupees, for example 150.",
+  "join.v.consent": "Please tick the box so Hogaya's AI assistant can call you about jobs.",
 };
 
 const hing: Dict = {
@@ -116,6 +132,21 @@ const hing: Dict = {
   "lp.price.3.d": "Visit ke baad pro bill bhejta hai: visit, labour aur parts. Aap use apni booking mein dekhte hain.",
   "lp.price.4.t": "Quote se zyada? Hum flag karte hain",
   "lp.price.4.d": "Agar bill quote se zyada ho to Hogaya booking ko review ke liye flag karti hai. 20% se zyada hone par pro ka reliability score bhi kam hota hai.",
+  "join.steps": "Sign-up ke steps",
+  "join.stepof": "Step {n}/3",
+  "join.step.details": "Aapki details",
+  "join.step.services": "Aapki services",
+  "join.step.consent": "Sahmati aur review",
+  "join.summary": "Aapki application",
+  "join.done.msg": "Shukriya. Hogaya aapki profile review karegi. Approve hone ke baad aapko job calls aayengi.",
+  "join.v.name": "Apna poora naam likhiye.",
+  "join.v.email": "Sahi email likhiye, jaise name@example.com.",
+  "join.v.phone": "Sahi country code ke saath valid phone number likhiye.",
+  "join.v.password": "8 se 72 akshar ka password chuniye.",
+  "join.v.cats": "Kam se kam ek kaam chuniye jo aap karte hain.",
+  "join.v.area": "Aap jo area cover karte hain woh likhiye, jaise Noida, Sector 62.",
+  "join.v.visit": "Rupaye mein visit charge likhiye, jaise 150.",
+  "join.v.consent": "Box tick kijiye taaki Hogaya ki AI assistant aapko jobs ke liye call kar sake.",
 };
 
 const hi: Dict = {
@@ -171,6 +202,21 @@ const hi: Dict = {
   "lp.price.3.d": "विज़िट के बाद कारीगर बिल भेजता है: विज़िट, मज़दूरी और पुर्ज़े। आप उसे अपनी बुकिंग में देखते हैं।",
   "lp.price.4.t": "कोट से ज़्यादा? हम फ़्लैग करते हैं",
   "lp.price.4.d": "अगर बिल कोट से ज़्यादा हो तो Hogaya बुकिंग को जाँच के लिए फ़्लैग करती है। 20% से ज़्यादा होने पर कारीगर का भरोसा-स्कोर भी घटता है।",
+  "join.steps": "साइन-अप के चरण",
+  "join.stepof": "चरण {n}/3",
+  "join.step.details": "आपकी जानकारी",
+  "join.step.services": "आपकी सेवाएँ",
+  "join.step.consent": "सहमति और जाँच",
+  "join.summary": "आपका आवेदन",
+  "join.done.msg": "धन्यवाद। Hogaya आपकी प्रोफ़ाइल की जाँच करेगी। अप्रूव होने के बाद आपको काम के कॉल आएँगे।",
+  "join.v.name": "अपना पूरा नाम लिखिए।",
+  "join.v.email": "सही ईमेल लिखिए, जैसे name@example.com।",
+  "join.v.phone": "सही कंट्री कोड के साथ वैध फ़ोन नंबर लिखिए।",
+  "join.v.password": "8 से 72 अक्षर का पासवर्ड चुनिए।",
+  "join.v.cats": "कम से कम एक काम चुनिए जो आप करते हैं।",
+  "join.v.area": "जिस इलाक़े में आप काम करते हैं वह लिखिए, जैसे नोएडा, सेक्टर 62।",
+  "join.v.visit": "रुपये में विज़िट चार्ज लिखिए, जैसे 150।",
+  "join.v.consent": "बॉक्स टिक कीजिए ताकि Hogaya की AI असिस्टेंट आपको काम के लिए कॉल कर सके।",
 };
 
 export const UI: Record<Lang, Dict> = { en, hing, hi };
