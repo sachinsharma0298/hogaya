@@ -64,7 +64,7 @@ export function AccountsTab() {
             {data.accounts.map((a) => (
               <li key={a.id} className="flex items-center justify-between gap-3 py-2.5">
                 <span>{a.role === "operator" ? <b>{a.name || "(no name)"}</b> : <Link href={`/operator/people/${encodeURIComponent(a.id)}`} className="font-bold underline-offset-4 hover:underline">{a.name || "(no name)"}</Link>} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.role}</span>{a.role !== "operator" && <StatusBadge status={a.status} />}<span className="block text-xs text-foreground/70">{a.email} {a.phone && `· ${a.phone}`}</span></span>
-                {a.role === "operator" ? <span className="text-[11px] text-foreground/50">Can’t be deleted</span>
+                {a.role === "operator" ? <span className="text-[11px] text-foreground/70">Can’t be deleted</span>
                   : <button type="button" onClick={() => remove(a)} className="rounded-lg border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10">Delete</button>}
               </li>
             ))}

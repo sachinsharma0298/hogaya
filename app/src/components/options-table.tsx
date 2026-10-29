@@ -18,7 +18,7 @@ function Cell({ value, t, note }: { value: string | null; t: T; note?: React.Rea
       {note ?? <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-700"><Check className="size-3" /> {t("conf")}</span>}
     </>
   ) : (
-    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-foreground/60"><CircleDashed className="size-3" /> {t("notconf")}</span>
+    <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-foreground/70"><CircleDashed className="size-3" /> {t("notconf")}</span>
   );
 }
 

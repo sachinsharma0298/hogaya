@@ -71,9 +71,9 @@ export default function MyBookings() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2"><span className="font-semibold">{t(`cat.${r.category}`)}</span><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${stateChipClass(r.state)}`}>{t(`st.${r.state}`)}</span></div>
               <p className="mt-0.5 truncate text-sm text-foreground/85">{r.problem}</p>
-              <p className="mt-0.5 text-xs text-foreground/65">{r.sector} · {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+              <p className="mt-0.5 text-xs text-foreground/70">{r.sector} · {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
             </div>
-            <ChevronRight className="size-4 shrink-0 text-foreground/50" />
+            <ChevronRight className="size-4 shrink-0 text-foreground/70" />
           </Link>
         ))}
       </div>

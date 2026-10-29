@@ -36,10 +36,10 @@ export function Tracker({ state, t }: { state: BookingState; t: T }) {
         const active = i === cur;
         return (
           <li key={k} className="flex flex-col items-center text-center" aria-current={active ? "step" : undefined}>
-            <span className={`grid size-8 place-items-center rounded-full text-xs font-bold transition ${done ? "bg-primary text-primary-foreground" : active ? "bg-accent text-accent-foreground ring-2 ring-primary" : "bg-muted text-foreground/60"}`}>
+            <span className={`grid size-8 place-items-center rounded-full text-xs font-bold transition ${done ? "bg-primary text-primary-foreground" : active ? "bg-accent text-accent-foreground ring-2 ring-primary" : "bg-muted text-foreground/70"}`}>
               {done ? <Check className="size-4" /> : i + 1}
             </span>
-            <span className={`mt-1 text-[11px] leading-tight ${active ? "font-semibold" : done ? "text-foreground/80" : "text-foreground/60"}`}>{t(`tr.${k}`)}</span>
+            <span className={`mt-1 text-[11px] leading-tight ${active ? "font-semibold" : done ? "text-foreground/80" : "text-foreground/70"}`}>{t(`tr.${k}`)}</span>
           </li>
         );
       })}

@@ -303,7 +303,7 @@ function BookForm({ user }: { user: SessionUser }) {
                 );
               })}
               <div aria-disabled="true" className="flex flex-col rounded-2xl border border-dashed p-3.5 text-left">
-                <Sparkles className="size-5 text-foreground/60" />
+                <Sparkles className="size-5 text-foreground/70" />
                 <span className="mt-2 text-sm font-semibold leading-tight">{t("cat.soon")}</span>
                 <span className="mt-0.5 text-xs leading-snug text-foreground/75">{t("cat.soon.hint")}</span>
               </div>

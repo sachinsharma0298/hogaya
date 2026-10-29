@@ -89,7 +89,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
               {catLabel(r.category)} · {r.sector} {r.demo && <DemoBadge label="Preview: simulated" />}
             </h2>
             <p className="mt-0.5 text-sm text-foreground/85">{r.problem}</p>
-            <p className="mt-1 text-xs text-foreground/65">{r.customer.name} ({customerHint}) · Location: {r.sector} · Time: {r.time_window}{r.notes ? ` · note: ${r.notes}` : ""}</p>
+            <p className="mt-1 text-xs text-foreground/70">{r.customer.name} ({customerHint}) · Location: {r.sector} · Time: {r.time_window}{r.notes ? ` · note: ${r.notes}` : ""}</p>
           </div>
           <StateChip state={r.state} />
         </div>
@@ -242,7 +242,7 @@ export function BookingDetail({ r, data, settings }: { r: HogayaRequest; data: C
       )}
 
       <CallTimeline r={r} post={post} />
-      <p className="text-center text-[11px] text-foreground/50">{openFlagCount(r) === 0 ? "No open flags" : `${openFlagCount(r)} open flag(s)`} · booking {r.id}</p>
+      <p className="text-center text-[11px] text-foreground/70">{openFlagCount(r) === 0 ? "No open flags" : `${openFlagCount(r)} open flag(s)`} · booking {r.id}</p>
     </div>
   );
 }

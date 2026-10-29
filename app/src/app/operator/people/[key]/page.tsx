@@ -19,7 +19,7 @@ import type { BookingState } from "@/lib/types";
 
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—");
 const Row = ({ k, children }: { k: string; children: React.ReactNode }) => (
-  <div className="grid grid-cols-[9rem_1fr] gap-3 py-1.5 text-sm"><dt className="text-foreground/65">{k}</dt><dd className="min-w-0 break-words font-medium">{children || "—"}</dd></div>
+  <div className="grid grid-cols-[9rem_1fr] gap-3 py-1.5 text-sm"><dt className="text-foreground/70">{k}</dt><dd className="min-w-0 break-words font-medium">{children || "—"}</dd></div>
 );
 
 /** Everything about one customer or Pro, and the actions on them. Passwords are never shown. */
@@ -77,7 +77,7 @@ export default function PersonPage() {
             </div>
             <dl className="mt-3 divide-y">
               <Row k="Email">{p.email}</Row>
-              <Row k="Phone">{p.phone ? <>{prettyPhone(p.phone)} <span className="font-normal text-foreground/60">({p.phone})</span></> : ""}</Row>
+              <Row k="Phone">{p.phone ? <>{prettyPhone(p.phone)} <span className="font-normal text-foreground/70">({p.phone})</span></> : ""}</Row>
               <Row k="Country">{p.country}</Row>
               <Row k="Role">{p.role === "pro" ? "Pro" : "Customer"}</Row>
               <Row k="Status">{p.status[0].toUpperCase() + p.status.slice(1)}{!p.has_login && " (has not signed in yet)"}</Row>
@@ -124,7 +124,7 @@ export default function PersonPage() {
               {p.bookings.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <Link href={`/operator?b=${encodeURIComponent(b.id)}`} className="min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:underline">{catLabel(b.category as Category)} · {b.problem}</Link>
-                  <span className="shrink-0 text-xs text-foreground/65">{when(b.created_at)}</span>
+                  <span className="shrink-0 text-xs text-foreground/70">{when(b.created_at)}</span>
                   <StateChip state={b.state as BookingState} />
                 </li>
               ))}

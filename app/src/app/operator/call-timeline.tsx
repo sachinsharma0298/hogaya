@@ -86,7 +86,7 @@ function CallRow({ c, post, replyText, setReplyText }: { c: CallRecord; post: (p
           <span className={`font-medium ${TONE[res.tone]}`}>{res.text}</span>
         </span>
         {c.demo && <DemoBadge label="Demo data" />}
-        <span className="shrink-0 text-xs text-foreground/60">{clock(c.started_at)}</span>
+        <span className="shrink-0 text-xs text-foreground/70">{clock(c.started_at)}</span>
       </button>
       {expanded && (
         <div className="space-y-3 border-t px-4 py-3">
@@ -146,7 +146,7 @@ export function CallTimeline({ r, post }: { r: HogayaRequest; post: (path: strin
       at: e.at, key: `e${i}`, technical,
       node: (
         <div className="flex gap-3 px-1 text-sm">
-          <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-xs text-foreground/60 tabular-nums">{clock(e.at)}</span>
+          <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-xs text-foreground/70 tabular-nums">{clock(e.at)}</span>
           <span className={e.text.startsWith("FLAG") || e.text.startsWith("ARRIVAL NOT") ? "font-semibold text-red-700" : ""}>{e.text}</span>
         </div>
       ),

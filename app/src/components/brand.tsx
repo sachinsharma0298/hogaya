@@ -64,7 +64,7 @@ export function CustomerShell({ children, right }: { children: React.ReactNode; 
             {user?.role === "pro" && <Link href="/pro" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.myjobs")}</Link>}
             {user?.role === "operator" && <Link href="/operator" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.operator")}</Link>}
             {user ? (
-              <button type="button" onClick={async () => { await logout(); window.location.assign("/"); }} className="text-foreground/65 underline-offset-4 hover:underline">{t("nav.logout")}</button>
+              <button type="button" onClick={async () => { await logout(); window.location.assign("/"); }} className="text-foreground/70 underline-offset-4 hover:underline">{t("nav.logout")}</button>
             ) : (
               <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">{t("nav.login")}</Link>
             )}

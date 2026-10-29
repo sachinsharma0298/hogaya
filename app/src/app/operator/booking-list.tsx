@@ -63,7 +63,7 @@ export function BookingList({
     <section aria-label="Bookings" className="rounded-3xl border bg-card">
       <div className="space-y-3 p-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/50" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/70" />
           <input
             aria-label="Search bookings"
             value={filters.search}
@@ -106,7 +106,7 @@ export function BookingList({
                   <StateChip state={r.state} />
                 </div>
                 <p className="mt-0.5 truncate text-sm text-foreground/85">{r.problem}</p>
-                <p className="mt-0.5 flex items-center gap-2 text-xs text-foreground/65">
+                <p className="mt-0.5 flex items-center gap-2 text-xs text-foreground/70">
                   <span className="truncate">{r.customer.name} · {r.sector}</span>
                   <span className="shrink-0">· {ago(r.created_at)}</span>
                   {openFlagCount(r) > 0 && <span className="shrink-0 font-semibold text-red-700">⚑ {openFlagCount(r)}</span>}

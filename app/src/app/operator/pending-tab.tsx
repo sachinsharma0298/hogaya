@@ -41,7 +41,7 @@ export function PendingTab({ data }: { data?: PendingData }) {
         <ul className="mt-3 divide-y">
           {data.customers.map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-              <div><p className="font-semibold"><Link href={`/operator/people/${encodeURIComponent(c.id)}`} className="underline-offset-4 hover:underline">{c.name || "(no name)"}</Link><StatusBadge status="pending" /></p><p className="text-xs text-foreground/75">{c.email} · {c.phone ? prettyPhone(c.phone) : "no phone"}</p><p className="text-xs text-foreground/60">Signed up {when(c.created_at)}</p></div>
+              <div><p className="font-semibold"><Link href={`/operator/people/${encodeURIComponent(c.id)}`} className="underline-offset-4 hover:underline">{c.name || "(no name)"}</Link><StatusBadge status="pending" /></p><p className="text-xs text-foreground/75">{c.email} · {c.phone ? prettyPhone(c.phone) : "no phone"}</p><p className="text-xs text-foreground/70">Signed up {when(c.created_at)}</p></div>
               {buttons("customers", c.id, c.name || c.email)}
             </li>
           ))}
@@ -58,7 +58,7 @@ export function PendingTab({ data }: { data?: PendingData }) {
                 <p className="font-semibold"><Link href={`/operator/people/${encodeURIComponent(p.id)}`} className="underline-offset-4 hover:underline">{p.name}</Link><StatusBadge status="pending" /></p>
                 <p className="text-xs text-foreground/75">{p.email} · {prettyPhone(p.phone)}</p>
                 <p className="text-xs text-foreground/75">{p.categories.map(catLabel).join(", ")} · {p.area} · {p.visit_charge}</p>
-                <p className="text-xs text-foreground/60">Agreed to AI calls {when(p.consent_at)} · applied {when(p.created_at)}</p>
+                <p className="text-xs text-foreground/70">Agreed to AI calls {when(p.consent_at)} · applied {when(p.created_at)}</p>
               </div>
               {buttons("pros", p.id, p.name)}
             </li>

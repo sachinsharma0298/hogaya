@@ -256,7 +256,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
                     <div className="mt-2 flex gap-1" role="radiogroup" aria-label={t("b.rate.title")}>
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n}`} onClick={() => setStars(n)} className="p-1">
-                          <Star className={`size-8 ${n <= stars ? "fill-primary text-primary" : "text-foreground/30"}`} />
+                          <Star className={`size-8 ${n <= stars ? "fill-primary text-primary" : "text-foreground/70"}`} />
                         </button>
                       ))}
                     </div>

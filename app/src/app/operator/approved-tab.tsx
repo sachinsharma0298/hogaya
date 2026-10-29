@@ -90,7 +90,7 @@ export function ApprovedTab() {
                 <div>
                   <p className="font-semibold">{a.person_key ? <Link href={`/operator/people/${encodeURIComponent(a.person_key)}`} className="underline-offset-4 hover:underline">{a.name}</Link> : a.name} <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase">{a.kind}</span><StatusBadge status={a.status ?? "approved"} /></p>
                   <p className="text-xs text-foreground/75">•••• {a.phone.slice(-4)}{a.email ? ` · ${a.email}` : ""} · consent {a.consent_at.slice(0, 10)} · by {a.added_by}</p>
-                  {a.note && <p className="text-xs text-foreground/60">{a.note}</p>}
+                  {a.note && <p className="text-xs text-foreground/70">{a.note}</p>}
                 </div>
                 <button type="button" onClick={() => remove(a)} aria-label={`Delete ${a.name}`} className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"><Trash2 className="size-3.5" />Delete</button>
               </li>

@@ -69,7 +69,7 @@ export function NotificationBell({ requestId, items, t }: { requestId: string; i
             ) : (
               <ul className="mt-2 space-y-2">
                 {[...items].reverse().map((n) => (
-                  <li key={n.id} className="flex gap-2 text-sm"><span aria-hidden>{ICON[n.kind]}</span><span>{text(n)}<span className="block text-[11px] text-foreground/60">{new Date(n.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></span></li>
+                  <li key={n.id} className="flex gap-2 text-sm"><span aria-hidden>{ICON[n.kind]}</span><span>{text(n)}<span className="block text-[11px] text-foreground/70">{new Date(n.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></span></li>
                 ))}
               </ul>
             )}
