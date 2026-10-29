@@ -50,6 +50,17 @@ const en: Dict = {
   "faq.a11": "Live calls: Hogaya's AI assistant really phones approved pros in that category, for accounts we have approved. Preview: the same flow runs with simulated pros and calls while we onboard pros in that category (or approve your account). Nobody is phoned in a preview.",
   "faq.q12": "How are prices decided?",
   "faq.a12": "The pro sets their own visit charge and estimate. Hogaya shows it to you before you confirm. After the visit the final bill appears in the app, and if it is above the quote, Hogaya flags the booking for review.",
+  // pricing
+  "lp.price.title": "How pricing works",
+  "lp.price.sub": "No surprises: you see the pro's charge before you say yes.",
+  "lp.price.1.t": "The pro sets the price",
+  "lp.price.1.d": "Each pro tells Hogaya's assistant their own visit charge and estimate.",
+  "lp.price.2.t": "You see it first",
+  "lp.price.2.d": "Hogaya shows you the visit charge and estimate before you confirm.",
+  "lp.price.3.t": "The final bill is in the app",
+  "lp.price.3.d": "After the visit the pro sends the bill: visit, labour and parts. You see it in your booking.",
+  "lp.price.4.t": "Higher than the quote? We flag it",
+  "lp.price.4.d": "If the bill is above the quote, Hogaya flags the booking for review. More than 20% above also lowers the pro's reliability score.",
 };
 
 const hing: Dict = {
@@ -95,6 +106,16 @@ const hing: Dict = {
   "faq.a11": "Live calls: Hogaya ki AI assistant us category ke approved pros ko asli phone karti hai, un accounts ke liye jo hamne approve kiye hain. Preview: wahi flow simulated pros aur calls ke saath chalta hai jab tak hum us category mein pros jod rahe hain (ya aapka account approve kar rahe hain). Preview mein kisi ko phone nahi jaata.",
   "faq.q12": "Price kaise tay hota hai?",
   "faq.a12": "Pro apna visit charge aur estimate khud tay karta hai. Confirm karne se pehle Hogaya woh aapko dikhati hai. Visit ke baad final bill app mein dikhta hai, aur agar woh quote se zyada ho to Hogaya booking ko review ke liye flag karti hai.",
+  "lp.price.title": "Pricing kaise kaam karti hai",
+  "lp.price.sub": "Koi surprise nahi: haan kehne se pehle aap pro ka charge dekhte hain.",
+  "lp.price.1.t": "Price pro tay karta hai",
+  "lp.price.1.d": "Har pro Hogaya ki assistant ko apna visit charge aur estimate khud batata hai.",
+  "lp.price.2.t": "Pehle aap dekhte hain",
+  "lp.price.2.d": "Confirm karne se pehle Hogaya aapko visit charge aur estimate dikhati hai.",
+  "lp.price.3.t": "Final bill app mein hota hai",
+  "lp.price.3.d": "Visit ke baad pro bill bhejta hai: visit, labour aur parts. Aap use apni booking mein dekhte hain.",
+  "lp.price.4.t": "Quote se zyada? Hum flag karte hain",
+  "lp.price.4.d": "Agar bill quote se zyada ho to Hogaya booking ko review ke liye flag karti hai. 20% se zyada hone par pro ka reliability score bhi kam hota hai.",
 };
 
 const hi: Dict = {
@@ -140,6 +161,16 @@ const hi: Dict = {
   "faq.a11": "लाइव कॉल: Hogaya की AI असिस्टेंट उस श्रेणी के अप्रूव्ड कारीगरों को असली फ़ोन करती है, उन अकाउंट के लिए जिन्हें हमने अप्रूव किया है। प्रीव्यू: वही प्रक्रिया नक़ली कारीगरों और कॉल के साथ चलती है, जब तक हम उस श्रेणी में कारीगर जोड़ रहे हैं (या आपका अकाउंट अप्रूव कर रहे हैं)। प्रीव्यू में किसी को फ़ोन नहीं जाता।",
   "faq.q12": "क़ीमत कैसे तय होती है?",
   "faq.a12": "कारीगर अपना विज़िट चार्ज और अनुमान ख़ुद तय करता है। पक्का करने से पहले Hogaya वह आपको दिखाती है। विज़िट के बाद फ़ाइनल बिल ऐप में दिखता है, और अगर वह कोट से ज़्यादा हो तो Hogaya बुकिंग को जाँच के लिए फ़्लैग करती है।",
+  "lp.price.title": "क़ीमत कैसे तय होती है",
+  "lp.price.sub": "कोई सरप्राइज़ नहीं: हाँ कहने से पहले आप कारीगर का चार्ज देखते हैं।",
+  "lp.price.1.t": "क़ीमत कारीगर तय करता है",
+  "lp.price.1.d": "हर कारीगर Hogaya की असिस्टेंट को अपना विज़िट चार्ज और अनुमान ख़ुद बताता है।",
+  "lp.price.2.t": "पहले आप देखते हैं",
+  "lp.price.2.d": "पक्का करने से पहले Hogaya आपको विज़िट चार्ज और अनुमान दिखाती है।",
+  "lp.price.3.t": "फ़ाइनल बिल ऐप में होता है",
+  "lp.price.3.d": "विज़िट के बाद कारीगर बिल भेजता है: विज़िट, मज़दूरी और पुर्ज़े। आप उसे अपनी बुकिंग में देखते हैं।",
+  "lp.price.4.t": "कोट से ज़्यादा? हम फ़्लैग करते हैं",
+  "lp.price.4.d": "अगर बिल कोट से ज़्यादा हो तो Hogaya बुकिंग को जाँच के लिए फ़्लैग करती है। 20% से ज़्यादा होने पर कारीगर का भरोसा-स्कोर भी घटता है।",
 };
 
 export const UI: Record<Lang, Dict> = { en, hing, hi };

@@ -10,6 +10,7 @@ import { HeroPhone } from "@/components/landing/HeroPhone";
 import { HomeScene } from "@/components/landing/HomeScene";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { KnowledgeBase } from "@/components/landing/KnowledgeBase";
+import { PricingBlock } from "@/components/landing/PricingBlock";
 import { ProsSection } from "@/components/landing/ProsSection";
 import { Reveal } from "@/components/landing/Reveal";
 import { SiteFooter } from "@/components/landing/SiteFooter";
@@ -40,6 +41,7 @@ export default function Landing() {
         </section>
 
         <HowItWorks />
+        <PricingBlock />
         <ProsSection />
         <TrustSection />
 
