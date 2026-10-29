@@ -50,13 +50,18 @@ function ProfileView({ data }: { data: ProfileData }) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await fetch("/api/pro/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats, call_lang: callLang }) });
-    const b = (await res.json().catch(() => ({}))) as { pending?: boolean };
-    setBusy(false);
-    if (!res.ok) return setMsg({ ok: false, text: t("pp.err") });
-    setMsg({ ok: true, text: t(b.pending ? "pp.saved.pending" : "pp.saved") });
-    const fresh = (await (await fetch("/api/pro/profile", { cache: "no-store" })).json().catch(() => null)) as ProfileData | null;
-    setPending(fresh?.provider.pending_changes);
+    try {
+      const res = await fetch("/api/pro/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats, call_lang: callLang }) });
+      const b = (await res.json().catch(() => ({}))) as { pending?: boolean };
+      setBusy(false);
+      if (!res.ok) return setMsg({ ok: false, text: t("pp.err") });
+      setMsg({ ok: true, text: t(b.pending ? "pp.saved.pending" : "pp.saved") });
+      const fresh = (await (await fetch("/api/pro/profile", { cache: "no-store" })).json().catch(() => null)) as ProfileData | null;
+      setPending(fresh?.provider.pending_changes);
+    } catch {
+      setBusy(false);
+      setMsg({ ok: false, text: t("err.network") });
+    }
   }
 
   const statusTone = review === "approved" ? "bg-emerald-100 text-emerald-800" : review === "rejected" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800";

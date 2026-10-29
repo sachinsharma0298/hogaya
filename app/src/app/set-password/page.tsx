@@ -25,8 +25,10 @@ export default function SetPassword() {
     setError("");
     if (pw.length < 8 || pw.length > 72) return setError(t("pw.err"));
     setBusy(true);
-    const res = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) });
-    if (!res.ok) { setBusy(false); return setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? t("login.err.generic")); }
+    try {
+      const res = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: pw }) });
+      if (!res.ok) { setBusy(false); return setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? t("login.err.generic")); }
+    } catch { setBusy(false); return setError(t("err.network")); }
     window.location.assign(HOME[user!.role]);
   }
   return (

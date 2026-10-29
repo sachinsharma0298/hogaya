@@ -86,9 +86,14 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
 
   async function post(path: string, body?: unknown) {
     setErr("");
-    const res = await fetch(`/api/requests/${id}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
-    if (!res.ok) setErr(t("err.generic"));
-    return res.ok;
+    try {
+      const res = await fetch(`/api/requests/${id}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
+      if (!res.ok) setErr(t("err.generic"));
+      return res.ok;
+    } catch {
+      setErr(t("err.network"));
+      return false;
+    }
   }
   async function choose(pid: string) {
     setBusy(pid);

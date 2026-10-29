@@ -32,10 +32,14 @@ function Chip({ status }: { status: ProStatus }) {
 function ArriveBox({ id }: { id: string }) {
   const { t } = useT();
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
   return (
-    <Button type="button" disabled={busy} onClick={async () => { setBusy(true); await fetch(`/api/pro/jobs/${id}/arrive`, { method: "POST" }); setBusy(false); }} className="mt-3 h-11 w-full rounded-xl">
-      {busy ? <Loader2 className="size-4 animate-spin" /> : t("pa.arrive.btn")}
-    </Button>
+    <>
+      <Button type="button" disabled={busy} onClick={async () => { setBusy(true); setErr(false); try { const r = await fetch(`/api/pro/jobs/${id}/arrive`, { method: "POST" }); if (!r.ok) setErr(true); } catch { setErr(true); } setBusy(false); }} className="mt-3 h-11 w-full rounded-xl">
+        {busy ? <Loader2 className="size-4 animate-spin" aria-label={t("f.busy")} /> : t("pa.arrive.btn")}
+      </Button>
+      {err && <p role="alert" className="mt-2 text-sm text-destructive">{t("err.generic")}</p>}
+    </>
   );
 }
 
@@ -48,9 +52,13 @@ function CodeBox({ id }: { id: string }) {
     e.preventDefault();
     setBusy(true);
     setResult(null);
-    const res = await fetch(`/api/pro/jobs/${id}/code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-    const b = await res.json().catch(() => ({}));
-    setResult(!res.ok ? "err" : b.ok ? "ok" : "bad");
+    try {
+      const res = await fetch(`/api/pro/jobs/${id}/code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+      const b = await res.json().catch(() => ({}));
+      setResult(!res.ok ? "err" : b.ok ? "ok" : "bad");
+    } catch {
+      setResult("err");
+    }
     setBusy(false);
   }
   return (
@@ -81,10 +89,14 @@ function BillBox({ job }: { job: ProJob }) {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const res = await fetch(`/api/pro/jobs/${job.id}/bill`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
-    const b = await res.json().catch(() => ({}));
-    if (!res.ok) setError(t("err.generic"));
-    else setDone({ flagged: !!b.flagged });
+    try {
+      const res = await fetch(`/api/pro/jobs/${job.id}/bill`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) setError(t("err.generic"));
+      else setDone({ flagged: !!b.flagged });
+    } catch {
+      setError(t("err.network"));
+    }
     setBusy(false);
   }
   if (done) return <p role="status" className="mt-3 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">{t("pa.bill.sent")}{done.flagged && <span className="mt-1 block text-xs font-normal text-amber-900">{t("pa.bill.high")}</span>}</p>;

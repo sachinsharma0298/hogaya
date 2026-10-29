@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LegalLinks } from "@/components/legal-links";
 import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
 import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
@@ -48,6 +49,10 @@ function LoginForm() {
     const customerBooking = (toBooking || me.user?.role === "customer") && next.startsWith("/book");
     window.location.assign(approved || customerBooking ? next || (me.user ? HOME[me.user.role] : "/me") : "/me");
   }
+  /** Any request can fail (no internet, server down): say so, and what to do. */
+  const safe = (fn: (e: React.FormEvent) => Promise<void>) => async (e: React.FormEvent) => {
+    try { await fn(e); } catch { setBusy(null); setError(t("err.network")); }
+  };
   async function passwordSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -125,7 +130,7 @@ function LoginForm() {
                 <button type="button" onClick={() => { setMode("signin"); setForgotDone(false); setError(""); }} className="mt-3 text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot.back")}</button>
               </div>
             ) : (
-              <form onSubmit={forgot} noValidate className="space-y-3">
+              <form onSubmit={safe(forgot)} noValidate className="space-y-3">
                 <div className="space-y-1.5"><Label htmlFor="forgot-id">{t("login.forgot.label")}</Label><Input id="forgot-id" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" /></div>
                 <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">{busy ? <Loader2 className="size-4 animate-spin" /> : t("login.forgot.btn")}</Button>
                 <button type="button" onClick={() => { setMode("signin"); setError(""); }} className="block w-full text-center text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot.back")}</button>
@@ -133,7 +138,7 @@ function LoginForm() {
             )
           ) : (
             <>
-              <form onSubmit={mode === "signin" ? passwordSignIn : createAccount} noValidate className="space-y-3">
+              <form onSubmit={safe(mode === "signin" ? passwordSignIn : createAccount)} noValidate className="space-y-3">
                 {mode === "create" && <div className="space-y-1.5"><Label htmlFor="name">{t("login.name")}</Label><Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-base" /></div>}
                 <div className="space-y-1.5">
                   <Label htmlFor="email">{t("login.email")}</Label>
@@ -151,6 +156,7 @@ function LoginForm() {
                     <span>{t("login.consent")}</span>
                   </label>
                 )}
+                {mode === "create" && <LegalLinks />}
                 <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
                   {busy ? <Loader2 className="size-4 animate-spin" /> : mode === "signin" ? t("login.signin.btn") : t("login.create.btn")}
                 </Button>

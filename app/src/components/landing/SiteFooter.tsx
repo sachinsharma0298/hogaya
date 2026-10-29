@@ -12,6 +12,8 @@ export function SiteFooter() {
         <Link href="/pro/join" className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">{t("lp.cta.pro")}</Link>
         <Link href="/login" className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">{t("nav.login")}</Link>
         <Link href="/help" className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">{t("nav.help")}</Link>
+        <Link href="/privacy" className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">{t("legal.privacy")}</Link>
+        <Link href="/terms" className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">{t("legal.terms")}</Link>
       </nav>
       <p className="mt-4 text-xs text-foreground/70">{t("lp.foot.fo")}</p>
     </footer>

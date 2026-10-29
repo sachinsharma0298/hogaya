@@ -26,8 +26,12 @@ function CallLanguage() {
   const value = stored ?? defaultCallLang(lang);
   async function pick(v: CallLang) {
     setStored(v);
-    const res = await fetch("/api/me/call-lang", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ call_lang: v }) });
-    setSaved(res.ok);
+    try {
+      const res = await fetch("/api/me/call-lang", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ call_lang: v }) });
+      setSaved(res.ok);
+    } catch {
+      setSaved(false);
+    }
   }
   return (
     <section className="mt-4 rounded-3xl border bg-card p-4">

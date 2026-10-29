@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/lib/categories";
+import { LegalLinks } from "@/components/legal-links";
 import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
 import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
@@ -150,6 +151,7 @@ export default function ProJoin() {
                 <span>{t("join.consent")}</span>
               </label>
               {msg(Boolean(seen.s3), consent, "join.v.consent")}
+              <LegalLinks />
             </div>
           )}
 
