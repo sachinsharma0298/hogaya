@@ -15,6 +15,7 @@ export interface ProJob {
   problem: string;
   notes?: string;
   sector: string;
+  requested: string; // the time the customer asked for
   slot: string | null;
   slot_exact: boolean;
   visit_charge: string | null;
@@ -82,7 +83,7 @@ function toJob(r: HogayaRequest, providerId: string, j: ProviderCallJson): ProJo
 
   return {
     id: r.id, tab, today, status,
-    category: r.category, problem: r.problem, notes: r.notes, sector: r.sector,
+    category: r.category, problem: r.problem, notes: r.notes, sector: r.sector, requested: r.time_window,
     slot: mine ? b!.slot : j.slot, slot_exact: mine ? b!.slot_exact !== false : j.slot_exact,
     visit_charge: j.visit_charge, labour_estimate: j.labour_estimate,
     address: chosenMe && status !== "not_selected" && status !== "cancelled" ? r.address : null,

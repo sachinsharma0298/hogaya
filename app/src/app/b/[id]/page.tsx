@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/lang";
+import { slotText } from "@/lib/slots";
 import { rankOptions, recommendationReason } from "@/lib/recommend";
 import { isHold } from "@/lib/state";
 import { usePoll } from "@/lib/use-poll";
@@ -102,14 +103,14 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
           <p className="mt-1 text-sm leading-snug">{r.problem}</p>
           <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             <dt className="text-foreground/70">{t("b.where")}</dt><dd>{r.sector}</dd>
-            <dt className="text-foreground/70">{t("b.when")}</dt><dd>{r.time_window}</dd>
+            <dt className="text-foreground/70">{t("b.when")}</dt><dd>{slotText(r.time_window, t)}</dd>
             {r.notes && (<><dt className="text-foreground/70">{t("b.notes")}</dt><dd>{r.notes}</dd></>)}
           </dl>
         </section>
 
         {/* 2. Progress */}
         {!cancelled && (
-          <section aria-label="Progress" className="mt-4 rounded-3xl border bg-card p-5">
+          <section aria-label={t("tr.progress")} className="mt-4 rounded-3xl border bg-card p-5">
             <Tracker state={state} t={t} />
             {statusLine && (
               <p role="status" className="mt-4 flex items-center gap-2 rounded-2xl bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground">
@@ -122,7 +123,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
             </label>
             {hood && hoodKey && (
               <div className="mt-2 space-y-1.5 border-t pt-2 text-xs text-foreground/80">
-                {DICT_HAS(t, `hood.${hoodKey}.fo`) && <p><b className="rounded-full bg-foreground px-1.5 py-0.5 text-[10px] uppercase text-background">Fo</b> {t(`hood.${hoodKey}.fo`)}</p>}
+                {DICT_HAS(t, `hood.${hoodKey}.fo`) && <p><b className="rounded-full bg-foreground px-1.5 py-0.5 text-[10px] uppercase text-background">AI</b> {t(`hood.${hoodKey}.fo`)}</p>}
                 {DICT_HAS(t, `hood.${hoodKey}.hogaya`) && <p><b className="rounded-full bg-accent px-1.5 py-0.5 text-[10px] uppercase text-accent-foreground">Hogaya</b> {t(`hood.${hoodKey}.hogaya`)}</p>}
               </div>
             )}

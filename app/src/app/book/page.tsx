@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LayoutGrid, Loader2, PhoneCall, ShieldCheck, Sparkles, UserCheck, X } from "lucide-react";
-import { CATEGORIES, type Category } from "@/lib/categories";
+import { CATEGORIES, isCategory, type Category } from "@/lib/categories";
+import { customSlot, presetSlots, slotText, todayInput } from "@/lib/slots";
 import { CATEGORY_ICONS as ICONS } from "@/lib/category-icons";
 import { suggestCategory } from "@/lib/suggest-category";
 import { CustomerShell, StateBox } from "@/components/brand";
@@ -19,19 +20,16 @@ import { Textarea } from "@/components/ui/textarea";
 
 const TOP: Category[] = ["electrician", "plumber", "ac", "pump", "washing_machine", "ro", "fridge"];
 
-// The value is what Fo and the operator see (English); the label is translated.
-const WINDOWS = [
-  { value: "Now (1–2 hours)", key: "w.now" },
-  { value: "Today 5–8 PM", key: "w.evening" },
-  { value: "Tomorrow morning", key: "w.morning" },
-];
-
 function BookForm({ user }: { user: SessionUser }) {
   const router = useRouter();
   const { t } = useT();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [picked, setPicked] = useState<Category | null>(null); // chosen by tapping a tile
-  const [f, setF] = useState({ problem: "", sector: "", address: "", time_window: WINDOWS[1].value, notes: "", name: user.name, phone: user.phone });
+  const fromLink = useSearchParams().get("category");
+  const [picked, setPicked] = useState<Category | null>(isCategory(fromLink) ? fromLink : null); // chosen by tapping a tile, or by the link from the landing page
+  const [slots] = useState(() => presetSlots()); // generated once, from the customer's own clock
+  const [slotId, setSlotId] = useState<string>(() => slots[0].id);
+  const [custom, setCustom] = useState({ date: "", time: "" });
+  const [f, setF] = useState({ problem: "", sector: "", address: "", landmark: "", notes: "", name: user.name, phone: user.phone });
   const [consent, setConsent] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -60,8 +58,17 @@ function BookForm({ user }: { user: SessionUser }) {
     }
     if (step === 2) {
       if (!f.sector.trim() || !f.address.trim()) return setError(t("s2.need"));
+      const w = timeWindow();
+      if ("error" in w) return setError(t(`slot.err.${w.error}`));
       return setStep(3);
     }
+  }
+
+  /** The chosen slot as the readable label that goes into the booking's time field (the field the call brief reads). */
+  function timeWindow(): { value: string } | { error: "pick" | "custom" | "past" } {
+    if (slotId === "custom") return customSlot(custom.date, custom.time);
+    const hit = slots.find((x) => x.id === slotId);
+    return hit ? { value: hit.value } : { error: "pick" };
   }
 
   async function submit(e: React.FormEvent) {
@@ -71,12 +78,17 @@ function BookForm({ user }: { user: SessionUser }) {
     if (!f.name.trim() || !f.phone.trim()) return setError(t("s3.need"));
     if (!consent) return setError(t("e.consent"));
     if (!category) return setError(t("e.category"));
+    const w = timeWindow();
+    if ("error" in w) return setError(t(`slot.err.${w.error}`));
     setBusy(true);
     try {
+      const { landmark, ...rest } = f;
+      // The landmark rides along inside the address, so it follows the same privacy rule (shared only on the booking call, after the customer confirms).
+      const address = landmark.trim() ? `${f.address.trim()} (landmark: ${landmark.trim()})` : f.address.trim();
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, category, consent }),
+        body: JSON.stringify({ ...rest, address, time_window: w.value, category, consent }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "x");
@@ -172,8 +184,12 @@ function BookForm({ user }: { user: SessionUser }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="address">{t("f.address")}</Label>
-              <Input id="address" value={f.address} onChange={set("address")} placeholder={t("f.address.ph")} className="h-11 text-base" />
-              <p className="flex items-center gap-1.5 pt-0.5 text-sm text-foreground/80"><ShieldCheck className="size-3.5" /> {t("f.privacy")}</p>
+              <Input id="address" value={f.address} onChange={set("address")} placeholder={t("f.address.ph")} autoComplete="street-address" className="h-11 text-base" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="landmark">{t("f.landmark")}</Label>
+              <Input id="landmark" value={f.landmark} onChange={set("landmark")} placeholder={t("f.landmark.ph")} className="h-11 text-base" />
+              <p className="flex items-start gap-1.5 pt-0.5 text-sm text-foreground/80"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" /> {t("f.privacy")}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="notes">{t("f.notes")}</Label>
@@ -181,19 +197,25 @@ function BookForm({ user }: { user: SessionUser }) {
             </div>
             <div className="space-y-1.5">
               <Label>{t("f.when")}</Label>
-              <div className="flex flex-wrap gap-2">
-                {WINDOWS.map((w) => (
+              <div className="flex flex-wrap gap-2" role="group" aria-label={t("f.when")}>
+                {[...slots.map((x) => ({ id: x.id, label: slotText(x.value, t) })), { id: "custom", label: t("slot.custom") }].map((o) => (
                   <button
                     type="button"
-                    key={w.value}
-                    onClick={() => setF((p) => ({ ...p, time_window: w.value }))}
-                    aria-pressed={f.time_window === w.value}
-                    className={`rounded-full border px-3.5 py-2 text-sm transition ${f.time_window === w.value ? "border-primary bg-accent font-medium text-accent-foreground" : "bg-card hover:border-primary/50"}`}
+                    key={o.id}
+                    onClick={() => setSlotId(o.id)}
+                    aria-pressed={slotId === o.id}
+                    className={`rounded-full border px-3.5 py-2 text-sm transition ${slotId === o.id ? "border-primary bg-accent font-medium text-accent-foreground" : "bg-card hover:border-primary/50"}`}
                   >
-                    {t(w.key)}
+                    {o.label}
                   </button>
                 ))}
               </div>
+              {slotId === "custom" && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-1"><Label htmlFor="slot-date" className="text-xs">{t("slot.date")}</Label><Input id="slot-date" type="date" min={todayInput()} value={custom.date} onChange={(e) => setCustom((p) => ({ ...p, date: e.target.value }))} className="h-11 text-base" /></div>
+                  <div className="space-y-1"><Label htmlFor="slot-time" className="text-xs">{t("slot.time")}</Label><Input id="slot-time" type="time" value={custom.time} onChange={(e) => setCustom((p) => ({ ...p, time: e.target.value }))} className="h-11 text-base" /></div>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -201,6 +223,15 @@ function BookForm({ user }: { user: SessionUser }) {
         {step === 3 && (
           <section className="space-y-4">
             <h1 className="text-[26px] font-bold leading-tight tracking-tight">{t("s3.title")}</h1>
+            <div className="rounded-2xl border bg-card p-4 text-sm">
+              <p className="text-xs font-semibold text-foreground/70">{t("f.summary")}</p>
+              <p className="mt-1 font-semibold">{category ? t(`cat.${category}`) : ""}</p>
+              <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                <dt className="text-foreground/70">{t("f.sector")}</dt><dd>{f.sector}</dd>
+                <dt className="text-foreground/70">{t("f.summary.when")}</dt><dd>{(() => { const w = timeWindow(); return "value" in w ? slotText(w.value, t) : ""; })()}</dd>
+              </dl>
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-foreground/75"><ShieldCheck className="mt-0.5 size-3 shrink-0" /> {t("f.privacy")}</p>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="name">{t("f.name")}</Label>
               <Input id="name" value={f.name} onChange={set("name")} placeholder={t("f.name.ph")} autoComplete="name" className="h-11 text-base" />
@@ -284,22 +315,32 @@ function BookForm({ user }: { user: SessionUser }) {
   );
 }
 
-/** Booking needs a (demo) customer login, so every booking belongs to an account. */
-export default function BookPage() {
+/** Booking needs a customer login, so every booking belongs to an account. After signing in, the person comes back here with the same category selected. */
+function BookGate() {
   const { loading, user } = useSession();
   const { t } = useT();
   const router = useRouter();
+  const query = useSearchParams().toString();
+  const here = `/book${query ? `?${query}` : ""}`;
   useEffect(() => {
-    if (!loading && !user) router.replace("/login?next=/book");
-  }, [loading, user, router]);
+    if (!loading && !user) router.replace(`/login?next=${encodeURIComponent(here)}`);
+  }, [loading, user, router, here]);
   if (loading || !user) return <CustomerShell><StateBox title={t("loading.title")} /></CustomerShell>;
   if (user.role !== "customer" && user.role !== "operator") {
     return (
       <CustomerShell>
         <StateBox title={t("login.role.customer")} body={t("login.sub")} />
-        <Link href="/login?next=/book" className="mt-4 block text-center text-sm text-primary underline underline-offset-4">{t("nav.login")}</Link>
+        <Link href={`/login?next=${encodeURIComponent(here)}`} className="mt-4 block text-center text-sm text-primary underline underline-offset-4">{t("nav.login")}</Link>
       </CustomerShell>
     );
   }
   return <BookForm user={user} />;
+}
+
+export default function BookPage() {
+  return (
+    <Suspense fallback={null}>
+      <BookGate />
+    </Suspense>
+  );
 }

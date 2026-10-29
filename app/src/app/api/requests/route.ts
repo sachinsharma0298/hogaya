@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Please choose a category." }, { status: 400 });
   }
   if (b.consent !== true) {
-    return NextResponse.json({ error: "Consent for the Fo call is required." }, { status: 400 });
+    return NextResponse.json({ error: "Consent for the AI call is required." }, { status: 400 });
   }
   const user = auth.user;
   const phone = toE164(b.phone);

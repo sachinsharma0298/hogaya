@@ -68,7 +68,7 @@ export function BookingList({
             aria-label="Search bookings"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            placeholder="Search name, problem, sector…"
+            placeholder="Search name, problem, location…"
             className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm"
           />
         </div>

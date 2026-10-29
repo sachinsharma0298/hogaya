@@ -5,6 +5,7 @@ import { StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/lang";
+import { slotText } from "@/lib/slots";
 import { usePoll } from "@/lib/use-poll";
 import type { ProJob, ProStatus, ProTab } from "@/lib/pro-jobs";
 import { ProShell } from "./pro-shell";
@@ -111,11 +112,13 @@ function JobCard({ job }: { job: ProJob }) {
   return (
     <article className="rounded-3xl border bg-card p-5">
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-base font-semibold leading-snug">{t(`cat.${job.category}`)} · {job.sector}</h2>
+        <h2 className="text-base font-semibold leading-snug">{t(`cat.${job.category}`)}</h2>
         <Chip status={job.status} />
       </div>
       <p className="mt-1.5 text-sm leading-snug"><span className="font-medium">{t("pv.problem")}:</span> {job.problem}{job.notes ? ` (${job.notes})` : ""}</p>
       <div className="mt-3 space-y-2 text-sm">
+        <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" /> <span className="text-foreground/70">{t("pv.location")}:</span> {job.sector}</p>
+        {job.requested && <p className="flex items-center gap-2"><CalendarClock className="size-4 text-primary" /> <span className="text-foreground/70">{t("pv.requested")}:</span> {slotText(job.requested, t)}</p>}
         {job.slot && <p className="flex flex-wrap items-center gap-2"><CalendarClock className="size-4 text-primary" /> {job.slot} {!job.slot_exact && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">{t("row.exact.no")}</span>}</p>}
         {job.visit_charge && <p className="flex items-center gap-2"><ShieldCheck className="size-4 text-primary" /> {t("row.visit")}: {job.visit_charge}</p>}
         <div className="rounded-2xl bg-muted p-3">
