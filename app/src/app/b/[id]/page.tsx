@@ -8,6 +8,10 @@ import { Tracker } from "@/components/tracker";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useSession } from "@/components/session";
+import { useLiveCategories } from "@/lib/use-live-categories";
+import type { Category } from "@/lib/categories";
+import { Info } from "lucide-react";
 import { useT } from "@/lib/lang";
 import { slotText } from "@/lib/slots";
 import { rankOptions, recommendationReason } from "@/lib/recommend";
@@ -22,6 +26,25 @@ const HOOD: Partial<Record<BookingState, string>> = {
 };
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+/** One clear banner on a preview booking: why it is a preview, and what happens next. */
+function PreviewBanner({ category }: { category: Category }) {
+  const { t } = useT();
+  const { user, loading } = useSession();
+  const live = useLiveCategories();
+  if (loading || !live) return null;
+  const why = user && user.role === "customer" && user.review !== "approved" ? "account" : !live.has(category) ? "category" : "server";
+  return (
+    <div role="note" className="mt-3 flex items-start gap-3 rounded-2xl border border-stone-300 bg-stone-100 px-4 py-3 text-sm text-stone-900">
+      <Info className="mt-0.5 size-4 shrink-0" />
+      <div>
+        <p className="font-semibold">{t("prev.title")}</p>
+        <p className="mt-0.5">{t(`prev.why.${why}`)}</p>
+        <p className="mt-1">{t("prev.next")}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function BookingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -90,7 +113,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
       <div className="pb-28 md:pb-0">
         <NotificationToast items={r.notifications ?? []} t={t} />
         <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
-        {r.demo && <p role="note" className="mt-2 text-xs text-foreground/70">{t("b.preview.note")}</p>}
+        {r.demo && <PreviewBanner category={r.category} />}
 
         {cancelled && <p role="status" className="mt-4 rounded-2xl bg-muted px-4 py-3 text-sm">{t("b.h.cancelled")}</p>}
         {!cancelled && r.state === "paused" && <p role="status" className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{t("b.paused")}</p>}

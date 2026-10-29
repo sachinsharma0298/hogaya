@@ -4,6 +4,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { useT } from "@/lib/lang";
 import { BookCta, ProCta } from "@/components/cta";
+import { LiveBadge } from "@/components/live-badge";
 import { Faq } from "@/components/landing/Faq";
 import { HeroPhone } from "@/components/landing/HeroPhone";
 import { HomeScene } from "@/components/landing/HomeScene";
@@ -44,6 +45,7 @@ export default function Landing() {
 
         <section aria-labelledby="cats-h" className="mx-auto w-full max-w-6xl px-5 py-12">
           <Reveal><h2 id="cats-h" className="text-3xl font-bold tracking-tight md:text-4xl">{t("lp.cat.title")}</h2></Reveal>
+          <p className="mt-2 max-w-2xl text-sm text-foreground/80">{t("cat.legend")}</p>
           <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {CATEGORIES.map((c) => {
               const Icon = CATEGORY_ICONS[c];
@@ -53,6 +55,7 @@ export default function Landing() {
                     <Icon className="size-6 text-primary" />
                     <span className="mt-3 text-sm font-semibold leading-tight">{t(`cat.${c}`)}</span>
                     <span className="mt-0.5 text-xs leading-snug text-foreground/75">{t(`cat.${c}.hint`)}</span>
+                    <LiveBadge category={c} className="mt-2 self-start" />
                   </Link>
                 </li>
               );

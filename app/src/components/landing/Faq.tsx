@@ -2,7 +2,7 @@
 import { ChevronDown } from "lucide-react";
 import { useT } from "@/lib/lang";
 
-export const FAQ_COUNT = 10;
+export const FAQ_COUNT = 12;
 
 /** The questions people ask, as an accordion (native details/summary, so it works without JavaScript). */
 export function Faq() {

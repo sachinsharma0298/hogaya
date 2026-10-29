@@ -60,13 +60,13 @@ export function CustomerShell({ children, right }: { children: React.ReactNode; 
             <LangToggle />
           </div>
           <nav aria-label="Account" className="flex items-center gap-3 text-[11px]">
-            {(user?.role === "customer" || user?.role === "operator") && <Link href="/me" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.mybookings")}</Link>}
-            {user?.role === "pro" && <Link href="/pro" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.myjobs")}</Link>}
-            {user?.role === "operator" && <Link href="/operator" className="font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.operator")}</Link>}
+            {(user?.role === "customer" || user?.role === "operator") && <Link href="/me" className="inline-flex min-h-11 items-center font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.mybookings")}</Link>}
+            {user?.role === "pro" && <Link href="/pro" className="inline-flex min-h-11 items-center font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.myjobs")}</Link>}
+            {user?.role === "operator" && <Link href="/operator" className="inline-flex min-h-11 items-center font-medium text-foreground/80 underline-offset-4 hover:underline">{t("nav.operator")}</Link>}
             {user ? (
               <button type="button" onClick={async () => { await logout(); window.location.assign("/"); }} className="text-foreground/70 underline-offset-4 hover:underline">{t("nav.logout")}</button>
             ) : (
-              <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">{t("nav.login")}</Link>
+              <Link href="/login" className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline">{t("nav.login")}</Link>
             )}
           </nav>
         </div>
