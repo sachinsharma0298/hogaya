@@ -1,9 +1,11 @@
 "use client";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, MailCheck, ShieldAlert } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Loader2, MailCheck, ShieldAlert } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,35 +24,25 @@ function LoginForm() {
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const cfg = usePoll<{ supabase: boolean; dev: boolean }>("/api/auth/config", 600000).data;
-  const [mode, setMode] = useState<"signin" | "create" | "link" | "forgot">("signin");
+  const [mode, setMode] = useState<"signin" | "create" | "forgot">(params.get("tab") === "create" ? "create" : "signin");
   const [forgotDone, setForgotDone] = useState(false);
+  const [created, setCreated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [busy, setBusy] = useState<"mail" | "google" | "pw" | null>(null);
-  const [sentTo, setSentTo] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState<"google" | "pw" | null>(null);
   const [error, setError] = useState(params.get("error") ? t("login.err.callback") : "");
   const redirectTo = () => `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
-  async function sendLink(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const addr = email.trim();
-    if (!/^\S+@\S+\.\S+$/.test(addr)) return setError(t("login.err.email"));
-    setBusy("mail");
-    const { error: err } = await supabaseBrowser().auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirectTo() } });
-    setBusy(null);
-    if (err) return setError(t("login.err.send"));
-    setSentTo(addr);
-  }
-  async function afterSession() {
-    // The password sign-in sets the session in this browser; ask the server who we are, then go to the right home page.
+  /** Where to go once signed in. A customer heading to the booking form keeps going there, even before approval (the booking runs as a preview). */
+  async function afterSession(toBooking = false) {
     const me = (await (await fetch("/api/auth/me", { cache: "no-store" })).json().catch(() => ({}))) as { user?: { role: Role; review?: string; must_change_password?: boolean } };
     if (me.user?.must_change_password) return window.location.assign("/set-password"); // the operator reset the password: choose a new one first
-    // Someone still waiting (or not approved) lands on their own page, which says where they stand. Approved Pros go to /pro, customers to /me.
     const approved = !me.user || me.user.role === "operator" || me.user.review === "approved";
-    window.location.assign(approved ? next || (me.user ? HOME[me.user.role] : "/me") : "/me");
+    const customerBooking = (toBooking || me.user?.role === "customer") && next.startsWith("/book");
+    window.location.assign(approved || customerBooking ? next || (me.user ? HOME[me.user.role] : "/me") : "/me");
   }
   async function passwordSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -63,13 +55,14 @@ function LoginForm() {
   async function createAccount(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!consent) return setError(t("login.err.consent"));
     setBusy("pw");
-    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, phone, password }) });
-    const b = (await res.json().catch(() => ({}))) as { error?: string };
+    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, phone, password, consent }) });
     if (!res.ok) { setBusy(null); return setError(res.status === 409 ? t("login.err.exists") : res.status === 403 ? t("login.err.reserved") : res.status === 400 ? (password.length < 8 || password.length > 72 ? t("login.err.pw") : t("login.err.fields")) : t("login.err.generic")); }
     const { error: err } = await supabaseBrowser().auth.signInWithPassword({ email: email.trim(), password });
-    if (err) { setBusy(null); return setError(t("login.err.generic")); }
-    await afterSession();
+    setBusy(null);
+    if (err) return setError(t("login.err.generic"));
+    setCreated(true); // show the "waiting for approval" notice first; "Continue" goes on to the booking form (or My bookings)
   }
   async function forgot(e: React.FormEvent) {
     e.preventDefault();
@@ -96,20 +89,23 @@ function LoginForm() {
       {!cfg && <div className="mt-6"><StateBox title="…" /></div>}
       {cfg && !cfg.supabase && !cfg.dev && <div className="mt-6"><StateBox title={t("login.notconfigured")} /></div>}
 
-      {cfg?.supabase && (sentTo ? (
+      {cfg?.supabase && (created ? (
         <div className="mt-6 rounded-2xl border bg-card p-5 text-center" role="status">
-          <MailCheck className="mx-auto size-8 text-primary" />
-          <p className="mt-2 text-lg font-semibold">{t("login.sent.title")}</p>
-          <p className="mt-1 text-sm text-foreground/85">{t("login.sent.body", { email: sentTo })}</p>
+          <CheckCircle2 className="mx-auto size-8 text-primary" />
+          <p className="mt-2 text-lg font-semibold">{t("login.created.title")}</p>
+          <p className="mt-1 text-sm text-foreground/85">{t("login.created.body")}</p>
+          <Button type="button" onClick={() => afterSession(true)} className="mt-4 h-12 w-full rounded-2xl text-base">{t("login.created.btn")}</Button>
         </div>
       ) : (
         <div className="mt-6 space-y-4">
-          <div role="tablist" className="grid grid-cols-3 gap-1 rounded-2xl border bg-card p-1 text-sm font-medium">
-            {(["signin", "create", "link"] as const).map((m) => (
-              <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => { setMode(m); setError(""); }} className={`rounded-xl px-2 py-2 transition ${mode === m ? "bg-primary text-primary-foreground" : "text-foreground/75"}`}>{t(`login.tab.${m}`)}</button>
-            ))}
-          </div>
-          {GOOGLE && (
+          {mode !== "forgot" && (
+            <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl border bg-card p-1 text-sm font-medium">
+              {(["signin", "create"] as const).map((m) => (
+                <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => { setMode(m); setError(""); }} className={`rounded-xl px-2 py-2.5 transition ${mode === m ? "bg-primary text-primary-foreground" : "text-foreground/75"}`}>{t(`login.tab.${m}`)}</button>
+              ))}
+            </div>
+          )}
+          {GOOGLE && mode !== "forgot" && (
             <>
               <Button type="button" disabled={busy !== null} onClick={google} className="h-12 w-full rounded-2xl text-base">
                 {busy === "google" ? <Loader2 className="size-4 animate-spin" /> : t("login.google")}
@@ -132,32 +128,32 @@ function LoginForm() {
               </form>
             )
           ) : (
-          <>
-          <form onSubmit={mode === "signin" ? passwordSignIn : mode === "create" ? createAccount : sendLink} noValidate className="space-y-3">
-            {mode === "create" && (
-              <>
-                <div className="space-y-1.5"><Label htmlFor="name">{t("login.name")}</Label><Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-base" /></div>
-                <div className="space-y-1.5"><Label htmlFor="phone">{t("login.phone")}</Label><PhoneField id="phone" value={phone} onChange={setPhone} className="h-11 text-base" /><p className="text-xs text-foreground/70">{t("login.phone.note")}</p></div>
-              </>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">{t("login.email")}</Label>
-              <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" />
-            </div>
-            {mode !== "link" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="password">{t("login.password")}</Label>
-                <Input id="password" type="password" autoComplete={mode === "create" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 text-base" />
-              </div>
-            )}
-            <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
-              {busy ? <Loader2 className="size-4 animate-spin" /> : mode === "signin" ? t("login.signin.btn") : mode === "create" ? t("login.create.btn") : t("login.magic")}
-            </Button>
-          </form>
-          {mode === "signin" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="block w-full text-center text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot")}</button>}
-          </>
+            <>
+              <form onSubmit={mode === "signin" ? passwordSignIn : createAccount} noValidate className="space-y-3">
+                {mode === "create" && <div className="space-y-1.5"><Label htmlFor="name">{t("login.name")}</Label><Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="h-11 text-base" /></div>}
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">{t("login.email")}</Label>
+                  <Input id="email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 text-base" />
+                </div>
+                {mode === "create" && <div className="space-y-1.5"><Label htmlFor="phone">{t("login.phone")}</Label><PhoneField id="phone" value={phone} onChange={setPhone} className="h-11 text-base" /><p className="text-xs text-foreground/70">{t("login.phone.note")}</p></div>}
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">{t("login.password")}</Label>
+                  <Input id="password" type="password" autoComplete={mode === "create" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 text-base" />
+                </div>
+                {mode === "create" && (
+                  <label className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm leading-snug">
+                    <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
+                    <span>{t("login.consent")}</span>
+                  </label>
+                )}
+                <Button type="submit" disabled={busy !== null} className="h-12 w-full rounded-2xl text-base">
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : mode === "signin" ? t("login.signin.btn") : t("login.create.btn")}
+                </Button>
+              </form>
+              {mode === "signin" && <button type="button" onClick={() => { setMode("forgot"); setError(""); }} className="block w-full text-center text-sm font-medium text-primary underline underline-offset-4">{t("login.forgot")}</button>}
+              <p className="text-xs text-foreground/75">{t("login.pro.note")} <Link href="/pro/join" className="font-medium text-primary underline underline-offset-4">{t("login.pro.join")}</Link></p>
+            </>
           )}
-          <p className="text-xs text-foreground/75">{t("login.pro.note")}</p>
         </div>
       ))}
       {error && <p role="alert" className="mt-4 rounded-xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{error}</p>}

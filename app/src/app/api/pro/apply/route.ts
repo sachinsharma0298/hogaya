@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Enter your name, a valid email, a valid phone (with country code), at least one category, your area and your visit charge." }, { status: 400 });
   }
   if (!validPassword(b.password)) return NextResponse.json({ error: "Choose a password of 8 to 72 characters." }, { status: 400 });
-  if (b.consent !== true) return NextResponse.json({ error: "You must agree to receive AI phone calls from Fo on behalf of Hogaya." }, { status: 400 });
+  if (b.consent !== true) return NextResponse.json({ error: "You must agree to receive AI phone calls from Hogaya's AI assistant." }, { status: 400 });
   if (await isOperatorPhone(phone)) return NextResponse.json({ error: OPERATOR_PHONE_ERROR }, { status: 409 });
   if ((await reservedEmail(email)) || (await listProviders()).some((p) => p.phone === phone) || (await pendingProExists(email, phone))) {
     return NextResponse.json({ error: "This email or phone is already registered or waiting for approval." }, { status: 409 });

@@ -19,9 +19,9 @@ export async function reservedEmail(email: string): Promise<string | null> {
 export const validPassword = (p: unknown): p is string => typeof p === "string" && p.length >= 8 && p.length <= 72;
 
 /** Create a confirmed Supabase Auth user (no email is sent, so the hourly email limit never applies). */
-export async function createAuthUser(o: { email: string; password: string; name: string; phone: string; replaceIfExists?: boolean }): Promise<{ ok: true; id: string } | { ok: false; exists?: boolean; error: string }> {
+export async function createAuthUser(o: { email: string; password: string; name: string; phone: string; replaceIfExists?: boolean; consentAiCall?: boolean }): Promise<{ ok: true; id: string } | { ok: false; exists?: boolean; error: string }> {
   const admin = supabaseAdmin();
-  const { data, error } = await admin.auth.admin.createUser({ email: o.email, password: o.password, email_confirm: true, user_metadata: { full_name: o.name, phone: o.phone } });
+  const { data, error } = await admin.auth.admin.createUser({ email: o.email, password: o.password, email_confirm: true, user_metadata: { full_name: o.name, phone: o.phone, ...(o.consentAiCall ? { consent_ai_call_at: new Date().toISOString() } : {}) } });
   if (!error && data.user) return { ok: true, id: data.user.id };
   if (/already|registered|exists/i.test(error?.message ?? "")) {
     if (!o.replaceIfExists) return { ok: false, exists: true, error: "An account with this email already exists." };
