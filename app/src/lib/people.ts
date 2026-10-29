@@ -100,7 +100,7 @@ export async function approvePerson(key: string, by: string): Promise<Result> {
   } else if (x) { // a Pro application
     if (await isOperatorPhone(x.phone)) return fail(OPERATOR_PHONE_ERROR, 409);
     if ((await listProviders()).some((z) => z.phone === x.phone)) return fail("A Pro with this phone already exists.", 409);
-    await createApprovedPro({ name: x.name, phone: x.phone, email: x.email, area: x.area, visit: Number(x.visit_charge.replace(/[^\d.]/g, "")), categories: x.categories, consentDate: x.consent_at.slice(0, 10), consentText: x.consent_text, by, note: "Approved from the pending list" });
+    await createApprovedPro({ name: x.name, phone: x.phone, email: x.email, area: x.area, visit: Number(x.visit_charge.replace(/[^\d.]/g, "")), categories: x.categories, consentDate: x.consent_at.slice(0, 10), consentText: x.consent_text, callLang: x.call_lang, by, note: "Approved from the pending list" });
     await setPendingProStatus(x.id, "approved", by);
   } else if (u) { // a customer
     const phone = toE164(u.phone);

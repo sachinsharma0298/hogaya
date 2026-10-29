@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { accountsAvailable, createAuthUser, MAX_SIGNUPS_PER_HOUR, reservedEmail, signupsLastHour, validPassword } from "@/lib/accounts";
+import { isCallLang } from "@/lib/call-scripts/hogaya-context";
 import { isCategory, type Category } from "@/lib/categories";
 import { PRO_JOIN_CONSENT } from "@/lib/consent";
 import { toE164 } from "@/lib/phone";
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   if (name.length < 2 || !/^\S+@\S+\.\S+$/.test(email) || !phone || !area || !(visit > 0) || categories.length === 0) {
     return NextResponse.json({ error: "Enter your name, a valid email, a valid phone (with country code), at least one category, your area and your visit charge." }, { status: 400 });
   }
+  const callLang = isCallLang(b.call_lang) ? b.call_lang : undefined;
   if (!validPassword(b.password)) return NextResponse.json({ error: "Choose a password of 8 to 72 characters." }, { status: 400 });
   if (b.consent !== true) return NextResponse.json({ error: "You must agree to receive AI phone calls from Hogaya's AI assistant." }, { status: 400 });
   if (await isOperatorPhone(phone)) return NextResponse.json({ error: OPERATOR_PHONE_ERROR }, { status: 409 });
@@ -26,8 +28,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This email or phone is already registered or waiting for approval." }, { status: 409 });
   }
   if ((await signupsLastHour()) >= MAX_SIGNUPS_PER_HOUR) return NextResponse.json({ error: "Too many sign-ups right now. Please try again later." }, { status: 429 });
-  const res = await createAuthUser({ email, password: b.password, name, phone });
+  const res = await createAuthUser({ email, password: b.password, name, phone, callLang });
   if (!res.ok) return NextResponse.json({ error: res.exists ? "An account with this email already exists. Sign in, or use a different email." : "Could not create your account." }, { status: res.exists ? 409 : 500 });
-  await addPendingPro({ id: `pp-${Math.random().toString(36).slice(2, 8)}`, name, email, phone, categories, area, visit_charge: `₹${visit}`, consent_at: new Date().toISOString(), consent_text: PRO_JOIN_CONSENT });
+  await addPendingPro({ id: `pp-${Math.random().toString(36).slice(2, 8)}`, name, email, phone, categories, area, visit_charge: `₹${visit}`, consent_at: new Date().toISOString(), consent_text: PRO_JOIN_CONSENT, call_lang: callLang });
   return NextResponse.json({ ok: true });
 }

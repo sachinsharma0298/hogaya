@@ -1,10 +1,10 @@
-// Renders every call brief (fake data only) in English and Hinglish. Fails if a brief does not speak for Hogaya or leaks a name.
+// Renders every call brief (fake data only) in English, Hindi (Devanagari) and "language not chosen yet" (asks first). Fails if a brief does not speak for Hogaya or leaks a name.
 // Also saves the rendered briefs to ~/Desktop/Hogaya-Review/call-briefs.txt so they can be read before pushing.
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type CallLang } from "../src/lib/briefs";
+import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type LangPref } from "../src/lib/briefs";
 
 const operatorName = process.env.OPERATOR_NAME ?? "";
 const operatorEmail = process.env.OPERATOR_EMAIL ?? "";
@@ -16,7 +16,8 @@ const opt = (name: string, slot: string, exact: boolean) => ({ providerName: nam
 
 const out: string[] = [];
 let n = 0;
-for (const lang of ["english", "hinglish"] as CallLang[]) {
+const LANGS: [string, LangPref][] = [["english", "english"], ["hindi", "hindi"], ["unknown", undefined]];
+for (const [langName, lang] of LANGS) {
   const briefs: Record<string, string> = {
     provider: buildProviderBrief({ providerPhone: ph, providerName: "Ramesh", ...job, timeWindow: "Tomorrow, 10:30 AM", notes: "brand Usha", lang }),
     customer: buildCustomerBrief({ customerPhone: ph, customerName: "Sara", ...job, timeWindow: "Tomorrow, 10:30 AM", best: opt("Ramesh", "10:30 AM", true), second: opt("Suresh", "11 AM–12 PM", false), reason: "Exact time confirmed", lang }),
@@ -25,12 +26,18 @@ for (const lang of ["english", "hinglish"] as CallLang[]) {
     arrival: buildArrivalBrief({ providerPhone: ph, providerName: "Ramesh", category: job.category, sector: job.sector, lang }),
   };
   for (const [kind, text] of Object.entries(briefs)) {
-    assert.ok(text.includes("Hogaya"), `${lang}/${kind}: missing Hogaya`);
-    assert.ok(text.includes("Hogaya's AI assistant"), `${lang}/${kind}: not Hogaya's AI assistant`);
-    for (const b of banned) assert.ok(!text.toLowerCase().includes(b.toLowerCase()), `${lang}/${kind}: contains "${b}"`);
+    assert.ok(text.includes("Hogaya"), `${langName}/${kind}: missing Hogaya`);
+    if (lang !== "hindi") assert.ok(text.includes("Hogaya's AI assistant"), `${langName}/${kind}: not Hogaya's AI assistant`);
+    if (lang !== "english") assert.ok(text.includes("Hogaya की AI असिस्टेंट"), `${langName}/${kind}: no Hindi opening`);
+    // the Hindi brief says its lines in Devanagari; the unknown brief asks first, in both languages
+    if (lang === "hindi") assert.ok(/[\u0900-\u097F]{10}/.test(text.split("OPENING LINE")[1]), `${langName}/${kind}: opening not in Devanagari`);
+    assert.equal(text.includes("Aap Hindi mein baat karna chahenge ya English mein? Would you prefer Hindi or English?"), lang === undefined, `${langName}/${kind}: language question`);
+    assert.ok(text.includes("never mix") || text.includes("Never mix"), `${langName}/${kind}: no-mixing rule`);
+    assert.ok(/switch to (Hindi|English) immediately/.test(text), `${langName}/${kind}: no switching rule`);
+    for (const b of banned) assert.ok(!text.toLowerCase().includes(b.toLowerCase()), `${langName}/${kind}: contains "${b}"`);
     // the address appears only in the booking brief
-    assert.equal(text.includes("H-12 Example Street"), kind === "booking", `${lang}/${kind}: address rule`);
-    out.push(`${"=".repeat(70)}\n${kind.toUpperCase()} CALL (${lang})\n${"=".repeat(70)}\n${text}\n`);
+    assert.equal(text.includes("H-12 Example Street"), kind === "booking", `${langName}/${kind}: address rule`);
+    out.push(`${"=".repeat(70)}\n${kind.toUpperCase()} CALL (${langName})\n${"=".repeat(70)}\n${text}\n`);
     n++;
   }
 }

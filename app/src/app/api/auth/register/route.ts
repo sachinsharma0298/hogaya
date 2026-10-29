@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCallLang } from "@/lib/call-scripts/hogaya-context";
 import { toE164 } from "@/lib/phone";
 import { isOperatorPhone, OPERATOR_PHONE_ERROR } from "@/lib/store";
 import { accountsAvailable, createAuthUser, MAX_SIGNUPS_PER_HOUR, reservedEmail, signupsLastHour, validPassword } from "@/lib/accounts";
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   if (!validPassword(b.password)) return NextResponse.json({ error: "Choose a password of 8 to 72 characters." }, { status: 400 });
   if (await reservedEmail(email)) return NextResponse.json({ error: "This email is set up by Hogaya. Ask the operator to create your account." }, { status: 403 });
   if ((await signupsLastHour()) >= MAX_SIGNUPS_PER_HOUR) return NextResponse.json({ error: "Too many new accounts right now. Please try again later." }, { status: 429 });
-  const res = await createAuthUser({ email, password: b.password, name, phone, consentAiCall: true });
+  const res = await createAuthUser({ email, password: b.password, name, phone, consentAiCall: true, callLang: isCallLang(b.call_lang) ? b.call_lang : undefined });
   if (!res.ok) return NextResponse.json({ error: res.exists ? "An account with this email already exists. Please sign in." : "Could not create the account." }, { status: res.exists ? 409 : 500 });
   return NextResponse.json({ ok: true });
 }

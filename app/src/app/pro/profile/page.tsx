@@ -6,10 +6,12 @@ import { PhoneField } from "@/components/phone-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORIES, type Category } from "@/lib/categories";
 import { useT } from "@/lib/lang";
 import { usePoll } from "@/lib/use-poll";
+import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import type { Provider } from "@/lib/types";
 import { ProShell } from "../pro-shell";
 
@@ -30,10 +32,12 @@ function Profile() {
 }
 
 function ProfileView({ data }: { data: ProfileData }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { provider: p, review, stats } = data;
   const cur = (p.categories ?? [p.category]) as Category[];
   const [f, setF] = useState({ name: p.name, area: p.area ?? "", visit_charge: digits(p.visit_charge), working_hours: p.working_hours ?? "", bio: p.bio ?? "" });
+  const [pickedLang, setCallLang] = useState<CallLang | null>(p.call_lang ?? null);
+  const callLang = pickedLang ?? defaultCallLang(lang);
   const [cats, setCats] = useState<Category[]>(cur);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -46,7 +50,7 @@ function ProfileView({ data }: { data: ProfileData }) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await fetch("/api/pro/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats }) });
+    const res = await fetch("/api/pro/profile", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats, call_lang: callLang }) });
     const b = (await res.json().catch(() => ({}))) as { pending?: boolean };
     setBusy(false);
     if (!res.ok) return setMsg({ ok: false, text: t("pp.err") });
@@ -121,6 +125,7 @@ function ProfileView({ data }: { data: ProfileData }) {
           <div className="space-y-1.5"><Label htmlFor="pp-visit">{t("pp.visit")}</Label><Input id="pp-visit" inputMode="numeric" value={f.visit_charge} onChange={set("visit_charge")} className="h-11 text-base" /></div>
         </div>
         <div className="space-y-1.5"><Label htmlFor="pp-hours">{t("pp.hours")}</Label><Input id="pp-hours" value={f.working_hours} onChange={set("working_hours")} placeholder={t("pp.hours.ph")} className="h-11 text-base" /></div>
+        <CallLangPicker value={callLang} onChange={setCallLang} />
         <div className="space-y-1.5"><Label htmlFor="pp-bio">{t("pp.bio")}</Label><Textarea id="pp-bio" rows={3} maxLength={300} value={f.bio} onChange={set("bio")} placeholder={t("pp.bio.ph")} className="text-base" /></div>
         {msg && <p role={msg.ok ? "status" : "alert"} className={`rounded-xl px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-900" : "bg-destructive/10 text-destructive"}`}>{msg.text}</p>}
         <Button type="submit" disabled={busy} className="h-12 w-full rounded-2xl text-base">{busy ? <Loader2 className="size-4 animate-spin" /> : t("pp.save")}</Button>

@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, type Category } from "@/lib/categories";
+import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
+import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
 
 /** Pros apply here. Nothing happens on the phone until Hogaya approves the application. */
 export default function ProJoin() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [f, setF] = useState({ name: "", email: "", phone: "", password: "", area: "", visit_charge: "" });
   const [cats, setCats] = useState<Category[]>([]);
+  const [pickedLang, setCallLang] = useState<CallLang | null>(null);
+  const callLang = pickedLang ?? defaultCallLang(lang);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +30,7 @@ export default function ProJoin() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const res = await fetch("/api/pro/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats, consent }) });
+    const res = await fetch("/api/pro/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, categories: cats, consent, call_lang: callLang }) });
     const b = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) return setError(t(res.status === 400 ? "join.err.fields" : res.status === 409 ? "join.err.exists" : res.status === 429 ? "join.err.busy" : "join.err.generic"));
@@ -61,6 +65,7 @@ export default function ProJoin() {
             <div className="space-y-1.5"><Label htmlFor="j-area">{t("join.area")}</Label><Input id="j-area" value={f.area} onChange={set("area")} placeholder={t("join.area.ph")} className="h-11 text-base" /></div>
             <div className="space-y-1.5"><Label htmlFor="j-visit">{t("join.visit")}</Label><Input id="j-visit" inputMode="numeric" value={f.visit_charge} onChange={set("visit_charge")} className="h-11 text-base" /></div>
           </div>
+          <CallLangPicker value={callLang} onChange={setCallLang} />
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 size-4" />
             <span>{t("join.consent")}</span>

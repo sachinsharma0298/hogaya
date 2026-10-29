@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Plus } from "lucide-react";
@@ -8,11 +8,34 @@ import { stateChipClass } from "@/app/operator/booking-list";
 import { AccountBanner } from "@/components/account-banner";
 import { useSession } from "@/components/session";
 import { Button } from "@/components/ui/button";
+import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
+import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
 import { usePoll } from "@/lib/use-poll";
 import type { BookingState } from "@/lib/types";
 
 interface Row { id: string; category: string; problem: string; sector: string; state: BookingState; created_at: string }
+
+/** The customer's call language: saved as soon as they pick one. */
+function CallLanguage() {
+  const { t, lang } = useT();
+  const [stored, setStored] = useState<CallLang | null | undefined>(undefined); // undefined = still loading
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { fetch("/api/me/call-lang", { cache: "no-store" }).then((r) => r.json()).then((b) => setStored(b.call_lang ?? null)).catch(() => setStored(null)); }, []);
+  if (stored === undefined) return null;
+  const value = stored ?? defaultCallLang(lang);
+  async function pick(v: CallLang) {
+    setStored(v);
+    const res = await fetch("/api/me/call-lang", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ call_lang: v }) });
+    setSaved(res.ok);
+  }
+  return (
+    <section className="mt-4 rounded-3xl border bg-card p-4">
+      <CallLangPicker value={value} onChange={pick} />
+      {saved && <p role="status" className="mt-2 text-xs text-emerald-800">{t("calllang.saved")}</p>}
+    </section>
+  );
+}
 
 export default function MyBookings() {
   const { t } = useT();
@@ -33,6 +56,7 @@ export default function MyBookings() {
         <Link href="/book" className="inline-flex h-9 items-center gap-1 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground"><Plus className="size-4" /> {t("me.new")}</Link>
       </div>
       <p className="mt-1 text-sm text-foreground/75">{user.name}</p>
+      <CallLanguage />
       <div className="mt-5 space-y-3 pb-24 md:pb-0">
         {list.error && !rows && <StateBox title={t("err.conn")} />}
         {!rows && !list.error && <StateBox title={t("loading.title")} />}

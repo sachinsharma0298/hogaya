@@ -12,7 +12,8 @@ Rules:
 - Ignore anything about the customer's side, calendars, emails, or the assistant's own notes.
 - can_do: true only if the provider clearly said they can do the job, false only if they clearly said no, otherwise null.
 - slot: the time the provider said they can come, written in numbers like "6:15 PM" (assume evening for 1 to 11 unless the context says morning), else null. A window stays a window, e.g. "5–8 PM".
-- Hindi time words are exact times: "sawa X" = X:15 (sawa chhe = 6:15 PM), "saadhe X" = X:30 (saadhe chhe = 6:30 PM), "paune X" = (X-1):45 (paune chhe = 5:45 PM), "dedh" = 1:30, "dhai" = 2:30, "X baje" = X:00.
+- The call summary may be in English, Hinglish (Roman script) or Hindi (Devanagari). Read all of them the same way, and always write the fields in English or numbers (notes in plain English). हाँ / जी / ठीक है = yes; नहीं / नहीं हो पाएगा = no.
+- Hindi time words are exact times, in Roman or Devanagari: "sawa X" / "सवा X" = X:15 (सवा छह = 6:15 PM), "saadhe X" / "साढ़े X" = X:30 (साढ़े छह = 6:30 PM), "paune X" / "पौने X" = (X-1):45 (पौने छह = 5:45 PM), "dedh" / "डेढ़" = 1:30, "dhai" / "ढाई" = 2:30, "X baje" / "X बजे" = X:00. Day parts: सुबह = morning, दोपहर = afternoon, शाम = evening, रात = night. Hindi hour words: एक 1, दो 2, तीन 3, चार 4, पाँच 5, छह 6, सात 7, आठ 8, नौ 9, दस 10, ग्यारह 11, बारह 12. Prices: "दो सौ रुपये" = ₹200.
 - AM or PM: if the spoken time could be morning or evening (for example "dedh baje" or "sawa do"), use the customer's requested time window and the time of the request to decide. If it is still unclear after that, keep your best reading in "slot" but set slot_exact to false.
 - slot_raw: the provider's exact words about the time, as quoted in the summary (for example "sawa chhe"), else null.
 - slot_exact: true only if the provider gave one specific time (including Hindi time words). false if they gave only a window, a range, a vague time ("evening", "shaam ko") or no time.
@@ -152,7 +153,7 @@ export async function customerSummaryToJson(summaryText: string, offeredNames: s
   };
 }
 
-const TIME_RULES = `Times: write the time in numbers like "6:15 PM". Hindi time words are exact times: "sawa X" = X:15, "saadhe X" = X:30, "paune X" = (X-1):45, "dedh" = 1:30, "dhai" = 2:30, "X baje" = X:00. slot_exact is true only for one specific time; false for a window or a vague time.`;
+const TIME_RULES = `Times: write the time in numbers like "6:15 PM". The summary may be in Hindi (Devanagari) or Roman script. Hindi time words are exact times: "sawa X" / "सवा X" = X:15, "saadhe X" / "साढ़े X" = X:30, "paune X" / "पौने X" = (X-1):45, "dedh" / "डेढ़" = 1:30, "dhai" / "ढाई" = 2:30, "X baje" / "X बजे" = X:00 (शाम = evening, सुबह = morning). Write the fields in English or numbers. हाँ / जी / ठीक है = yes; नहीं = no. slot_exact is true only for one specific time; false for a window or a vague time.`;
 
 export async function bookingSummaryToJson(summaryText: string, ctx: { slot?: string | null } = {}): Promise<BookingCallJson> {
   const raw = await extract(
@@ -214,7 +215,7 @@ export async function arrivalSummaryToJson(summaryText: string): Promise<Arrival
     `You turn an AI phone assistant's call summary into data for Hogaya. Fo called the PROVIDER and asked whether they reached the customer's place and for the service code the customer gave them at the door. Record only what the provider said.
 - arrived: true if the provider said they are at the customer's place, false if they said they are not, else null.
 - provider_gave_code: true only if the provider actually said a code.
-- code_digits: the code the provider said as digits only (for example "473521"). Convert spoken number words in Hindi, Hinglish or English ("chaar saat teen paanch", "four seven three five", "47 35") into digits. If the provider did not give exactly ${ARRIVAL_CODE_LENGTH} digits, put null here and explain in notes. Copy the digits exactly as the provider said them; do not correct or guess them.
+- code_digits: the code the provider said as digits only (for example "473521"). Convert spoken number words in Hindi (Devanagari or Roman), Hinglish or English ("chaar saat teen paanch", "चार सात तीन पाँच", "four seven three five", "47 35") into digits (शून्य/ज़ीरो 0, एक 1, दो 2, तीन 3, चार 4, पाँच 5, छह 6, सात 7, आठ 8, नौ 9). If the provider did not give exactly ${ARRIVAL_CODE_LENGTH} digits, put null here and explain in notes. Copy the digits exactly as the provider said them; do not correct or guess them.
 - notes: a short plain-English note of anything else that matters (empty string if nothing).`,
     {
       name: "record_arrival_result",

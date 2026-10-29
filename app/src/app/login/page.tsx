@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
+import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { usePoll } from "@/lib/use-poll";
@@ -20,7 +22,7 @@ const GOOGLE = process.env.NEXT_PUBLIC_GOOGLE_LOGIN === "1";
 const safeNext = (n: string | null) => (n && /^\/(?![/\\])/.test(n) ? n : "");
 
 function LoginForm() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const cfg = usePoll<{ supabase: boolean; dev: boolean }>("/api/auth/config", 600000).data;
@@ -32,6 +34,8 @@ function LoginForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
+  const [pickedLang, setCallLang] = useState<CallLang | null>(null);
+  const callLang = pickedLang ?? defaultCallLang(lang);
   const [busy, setBusy] = useState<"google" | "pw" | null>(null);
   const [error, setError] = useState(params.get("error") ? t("login.err.callback") : "");
   const redirectTo = () => `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
@@ -57,7 +61,7 @@ function LoginForm() {
     setError("");
     if (!consent) return setError(t("login.err.consent"));
     setBusy("pw");
-    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, phone, password, consent }) });
+    const res = await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, phone, password, consent, call_lang: callLang }) });
     if (!res.ok) { setBusy(null); return setError(res.status === 409 ? t("login.err.exists") : res.status === 403 ? t("login.err.reserved") : res.status === 400 ? (password.length < 8 || password.length > 72 ? t("login.err.pw") : t("login.err.fields")) : t("login.err.generic")); }
     const { error: err } = await supabaseBrowser().auth.signInWithPassword({ email: email.trim(), password });
     setBusy(null);
@@ -140,6 +144,7 @@ function LoginForm() {
                   <Label htmlFor="password">{t("login.password")}</Label>
                   <Input id="password" type="password" autoComplete={mode === "create" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 text-base" />
                 </div>
+                {mode === "create" && <CallLangPicker value={callLang} onChange={setCallLang} />}
                 {mode === "create" && (
                   <label className="flex items-start gap-3 rounded-2xl border bg-card p-4 text-sm leading-snug">
                     <Checkbox checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />

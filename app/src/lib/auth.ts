@@ -1,6 +1,7 @@
 // Who is signed in. Production: Supabase Auth (email magic link or Google). The operator is ONE email, set in OPERATOR_EMAIL.
 // Local development only (DEV_LOGIN=1 and no DATABASE_URL): a cookie-based stand-in so the app can be tried without Supabase.
 import { cookies } from "next/headers";
+import { isCallLang } from "./call-scripts/hogaya-context";
 import { canonPhone, toE164 } from "./phone";
 import { findApprovedCustomerByEmail, findPendingProAny, findProviderByEmail, findUser, getOperatorProfile, isApproved, saveUser, setMustChangePassword, setReview } from "./store";
 import { supabaseConfigured, supabaseServer } from "./supabase/server";
@@ -44,6 +45,7 @@ export async function ensureProfile(au: { id: string; email?: string | null; ema
   const user = await saveUser({
     id: au.id, role, name, phone: approvedEntry ? approvedEntry.phone : canonPhone(au.user_metadata?.phone), email, provider_id: want.provider_id, created_at: new Date().toISOString(),
     review, reviewed_at: review === "pending" ? undefined : new Date().toISOString(), reviewed_by: review === "pending" ? undefined : application?.reviewed_by || decidedBy,
+    call_lang: isCallLang(au.user_metadata?.call_lang) ? au.user_metadata.call_lang : undefined,
     approval_seen: !(application?.status === "approved"), // someone who applied and was approved sees "Approved by Hogaya" once
   });
   if (au.app_metadata?.must_change_password === true) await setMustChangePassword(au.id, true);

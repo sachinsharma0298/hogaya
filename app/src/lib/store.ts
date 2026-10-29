@@ -3,6 +3,7 @@
 import type { Category } from "./categories";
 import { canonPhone, toE164 } from "./phone";
 import { iso, jsonParam, pgArray, q, tx, type Queryable, type Row } from "./db";
+import { isCallLang, type CallLang } from "./call-scripts/hogaya-context";
 import type { CallRecord, HogayaRequest, Provider, Review, Role, Settings, User } from "./types";
 
 // ---- simulated providers (never stored, never called) ----------------------------------------------------
@@ -28,6 +29,8 @@ export const isSimulated = (id: string) => id.startsWith("sim-");
 
 // ---- providers (Pros) ------------------------------------------------------------------------------------
 
+const langOf = (v: unknown): CallLang | undefined => (isCallLang(v) ? v : undefined);
+
 function providerFromRow(r: Row): Provider {
   const categories = (r.categories as string[]) ?? [];
   return {
@@ -38,7 +41,7 @@ function providerFromRow(r: Row): Provider {
     consent_ai_call: r.consent_ai_call as boolean, consent_date: r.consent_date as string, consent_text: (r.consent_text as string) || undefined, opt_out: r.opt_out as boolean,
     reliability: r.reliability as number, on_time_pct: r.on_time_pct as number, jobs: r.jobs as number,
     no_shows: r.no_shows as number, demo: r.demo as boolean,
-    working_hours: (r.working_hours as string) || undefined, bio: (r.bio as string) || undefined,
+    working_hours: (r.working_hours as string) || undefined, bio: (r.bio as string) || undefined, call_lang: langOf(r.call_lang),
     pending_changes: (r.pending_changes as Provider["pending_changes"]) ?? undefined,
     onboarded_by: (r.onboarded_by as string) || undefined, onboarded_at: iso(r.onboarded_at), verified: r.onboarded_at != null,
   };
@@ -46,15 +49,15 @@ function providerFromRow(r: Row): Provider {
 
 async function writeProvider(c: Queryable, p: Provider, insert: boolean) {
   const cols = [p.id, p.name, p.category, pgArray(p.categories ?? [p.category]), p.area ?? "", p.visit_charge ?? "", p.phone, p.email ?? "",
-    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null, p.consent_text ?? "", p.working_hours ?? "", p.bio ?? "", p.pending_changes ? JSON.stringify(p.pending_changes) : null];
+    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null, p.consent_text ?? "", p.working_hours ?? "", p.bio ?? "", p.pending_changes ? JSON.stringify(p.pending_changes) : null, p.call_lang ?? null];
   if (insert) {
     await c.query(
-      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at,consent_text,working_hours,bio,pending_changes)
-       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz,$19,$20,$21,$22::text::jsonb)`, cols);
+      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at,consent_text,working_hours,bio,pending_changes,call_lang)
+       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz,$19,$20,$21,$22::text::jsonb,$23)`, cols);
   } else {
     await c.query(
       `update providers set name=$2,category=$3,categories=$4::text[],area=$5,visit_charge=$6,phone=$7,email=$8,consent_ai_call=$9,consent_date=$10,opt_out=$11,
-       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz,consent_text=$19,working_hours=$20,bio=$21,pending_changes=$22::text::jsonb where id=$1`, cols);
+       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz,consent_text=$19,working_hours=$20,bio=$21,pending_changes=$22::text::jsonb,call_lang=$23 where id=$1`, cols);
   }
 }
 
@@ -344,7 +347,7 @@ const userFromRow = (r: Row): User => ({
   id: r.id as string, role: r.role as Role, name: r.name as string, phone: r.phone as string, email: (r.email as string) || undefined,
   provider_id: (r.provider_id as string) || undefined, created_at: iso(r.created_at)!,
   review: r.review as Review, reviewed_at: iso(r.reviewed_at), reviewed_by: (r.reviewed_by as string) || undefined,
-  must_change_password: Boolean(r.must_change_password), approval_seen: Boolean(r.approval_seen),
+  must_change_password: Boolean(r.must_change_password), approval_seen: Boolean(r.approval_seen), call_lang: langOf(r.call_lang),
 });
 export async function findUser(id: string): Promise<User | undefined> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return undefined;
@@ -381,9 +384,9 @@ export async function saveUser(u: User): Promise<User> {
   // The review decision is written only when the profile is first created; later changes go through setReviewByEmail.
   const review = u.review ?? (u.role === "customer" ? "pending" : "approved");
   await q(
-    `insert into profiles (id, role, name, phone, email, provider_id, created_at, review, reviewed_at, reviewed_by, approval_seen) values ($1::uuid,$2,$3,$4,$5,$6,$7::timestamptz,$8,$9::timestamptz,$10,$11)
+    `insert into profiles (id, role, name, phone, email, provider_id, created_at, review, reviewed_at, reviewed_by, approval_seen, call_lang) values ($1::uuid,$2,$3,$4,$5,$6,$7::timestamptz,$8,$9::timestamptz,$10,$11,$12)
      on conflict (id) do update set role=excluded.role, name=excluded.name, phone=excluded.phone, email=excluded.email, provider_id=excluded.provider_id`,
-    [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at, review, u.reviewed_at ?? null, u.reviewed_by ?? "", u.approval_seen ?? review !== "approved"]);
+    [u.id, u.role, u.name, u.phone, u.email ?? "", u.provider_id ?? null, u.created_at, review, u.reviewed_at ?? null, u.reviewed_by ?? "", u.approval_seen ?? review !== "approved", u.call_lang ?? null]);
   return (await findUser(u.id)) ?? u;
 }
 
@@ -397,6 +400,9 @@ export async function markApprovalSeen(id: string) {
 }
 export async function setMustChangePassword(id: string, v: boolean) {
   await q("update profiles set must_change_password=$2 where id=$1::uuid", [id, v]);
+}
+export async function setUserCallLang(id: string, lang: CallLang) {
+  await q("update profiles set call_lang=$2 where id=$1::uuid", [id, lang]);
 }
 export async function updateProfileDetails(id: string, name: string, phone?: string) {
   if (phone === undefined) await q("update profiles set name=$2 where id=$1::uuid", [id, name]);
@@ -451,7 +457,7 @@ export async function findEmailByIdentifier(raw: string): Promise<string | undef
 // ---- approval queue (pending customers and Pros) --------------------------------------------------------
 
 export interface PendingCustomer { id: string; name: string; email: string; phone: string; created_at: string }
-export interface PendingPro { id: string; name: string; email: string; phone: string; categories: Category[]; area: string; visit_charge: string; consent_at: string; consent_text?: string; created_at: string; status?: Review; reviewed_at?: string; reviewed_by?: string }
+export interface PendingPro { id: string; name: string; email: string; phone: string; categories: Category[]; area: string; visit_charge: string; consent_at: string; consent_text?: string; created_at: string; status?: Review; reviewed_at?: string; reviewed_by?: string; call_lang?: CallLang }
 
 /** Self-registered customers waiting for the operator: not approved, not rejected, and not someone who applied as a Pro. */
 export async function listPendingCustomers(): Promise<PendingCustomer[]> {
@@ -471,7 +477,7 @@ export async function setReview(id: string, review: "approved" | "rejected", by 
 const pendingProFromRow = (r: Row): PendingPro => ({
   id: r.id as string, name: r.name as string, email: r.email as string, phone: r.phone as string, categories: r.categories as Category[],
   area: r.area as string, visit_charge: r.visit_charge as string, consent_at: iso(r.consent_at)!, consent_text: (r.consent_text as string) || undefined, created_at: iso(r.created_at)!,
-  status: r.status as Review, reviewed_at: iso(r.reviewed_at), reviewed_by: (r.reviewed_by as string) || undefined,
+  status: r.status as Review, reviewed_at: iso(r.reviewed_at), reviewed_by: (r.reviewed_by as string) || undefined, call_lang: langOf(r.call_lang),
 });
 export async function listPendingPros(): Promise<PendingPro[]> {
   return (await q("select * from pending_pros where status='pending' order by created_at")).map(pendingProFromRow);
@@ -491,8 +497,8 @@ export async function pendingProExists(email: string, phone: string): Promise<bo
   return (await q("select 1 from pending_pros where status='pending' and (lower(email)=lower($1) or phone=$2) limit 1", [email, canonPhone(phone)])).length > 0;
 }
 export async function addPendingPro(p: Omit<PendingPro, "created_at">) {
-  await q("insert into pending_pros (id,name,email,phone,categories,area,visit_charge,consent_at,consent_text) values ($1,$2,$3,$4,$5::text[],$6,$7,$8::timestamptz,$9)",
-    [p.id, p.name, p.email.toLowerCase(), canonPhone(p.phone), pgArray(p.categories), p.area, p.visit_charge, p.consent_at, p.consent_text ?? ""]);
+  await q("insert into pending_pros (id,name,email,phone,categories,area,visit_charge,consent_at,consent_text,call_lang) values ($1,$2,$3,$4,$5::text[],$6,$7,$8::timestamptz,$9,$10)",
+    [p.id, p.name, p.email.toLowerCase(), canonPhone(p.phone), pgArray(p.categories), p.area, p.visit_charge, p.consent_at, p.consent_text ?? "", p.call_lang ?? null]);
 }
 export async function setPendingProStatus(id: string, status: "approved" | "rejected", by = "") {
   await q("update pending_pros set status=$2, reviewed_at=now(), reviewed_by=$3 where id=$1", [id, status, by]);

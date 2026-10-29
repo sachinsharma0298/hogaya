@@ -4,8 +4,11 @@ export type { Category };
 /** Accounts are Supabase Auth users (email magic link or Google). The role is set by our server: the operator is the one email in OPERATOR_EMAIL. */
 export type Role = "customer" | "pro" | "operator";
 export type Review = "pending" | "approved" | "rejected";
+import type { CallLang } from "./call-scripts/hogaya-context";
+
 export interface User {
   id: string;
+  call_lang?: CallLang; // preferred call language; undefined = never chosen (the call asks)
   role: Role;
   review?: Review; // the operator's decision about this person (read from the database; saveUser never changes it after sign-up)
   reviewed_at?: string;
@@ -38,6 +41,7 @@ export interface Provider {
   onboarded_by?: string; // who onboarded this Pro at Hogaya
   onboarded_at?: string;
   phone: string;
+  call_lang?: CallLang; // preferred call language; undefined = never chosen (the call asks)
   consent_ai_call: boolean;
   consent_date: string;
   consent_text?: string; // the exact wording the Pro agreed to

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { isCallLang } from "@/lib/call-scripts/hogaya-context";
 import { isCategory, type Category } from "@/lib/categories";
 import { getProviders, listRequests, updateProfileDetails, updateProvider } from "@/lib/store";
 import type { PendingProfileChange } from "@/lib/types";
@@ -45,7 +46,7 @@ export async function PUT(req: Request) {
   if (visit !== (cur.visit_charge ?? "")) pending.visit_charge = visit;
   const has = Boolean(pending.categories || pending.area || pending.visit_charge);
   const previous = cur.pending_changes && has && JSON.stringify({ ...pending, requested_at: "" }) === JSON.stringify({ ...cur.pending_changes, requested_at: "" }) ? cur.pending_changes : undefined;
-  await updateProvider(cur.id, (z) => { z.name = name; z.bio = bio || undefined; z.working_hours = hours || undefined; z.pending_changes = has ? previous ?? pending : undefined; });
+  await updateProvider(cur.id, (z) => { z.name = name; z.bio = bio || undefined; z.working_hours = hours || undefined; if (isCallLang(b.call_lang)) z.call_lang = b.call_lang; z.pending_changes = has ? previous ?? pending : undefined; });
   if (name !== m.u.name) await updateProfileDetails(m.u.id, name);
   return NextResponse.json({ ok: true, pending: has });
 }

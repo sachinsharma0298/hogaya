@@ -7,6 +7,7 @@
 // use RealVoice, which really calls through Fo.
 import { DRY_RUN, MODE } from "./mode";
 import { canonPhone } from "./phone";
+import { findUser } from "./store";
 import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type OfferedOption } from "./briefs";
 import { beginLiveCall, callMarker, pollLiveCall, recoverLiveCall, replyLiveCall, type Polled, type Recovery } from "./fo-poll";
 import { arrivalSummaryToJson, bookingSummaryToJson, customerSummaryToJson, reconfirmSummaryToJson, summaryToJson } from "./summarise";
@@ -221,29 +222,31 @@ const offered = (o: Option): OfferedOption => ({
 export const REAL_STEPS: VoiceProvider["real"] = { provider: true, customer: true, booking: true, reconfirm: true, arrival: true, on_the_way: false };
 
 /** The brief for a call. The address goes into the booking brief only. The arrival code is never in any brief. */
-function briefFor(job: CallJob): string {
+async function briefFor(job: CallJob): Promise<string> {
   const r = job.request;
   const j = jobInfo(r);
+  const proLang = job.provider?.call_lang; // a Pro is called in their own language, a customer in theirs; none stored = the call asks first
+  const customerLang = r.customer.user_id ? (await findUser(r.customer.user_id))?.call_lang : undefined;
   switch (job.kind) {
     case "provider":
-      return buildProviderBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, problem: j.problem, sector: j.sector, timeWindow: j.time_window, notes: j.notes });
+      return buildProviderBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, problem: j.problem, sector: j.sector, timeWindow: j.time_window, notes: j.notes, lang: proLang });
     case "customer":
       return buildCustomerBrief({
         customerPhone: customerPhone(r.customer.phone), customerName: r.customer.name, category: j.category, problem: j.problem, sector: j.sector,
-        timeWindow: j.time_window, best: offered(job.best!), second: job.second ? offered(job.second) : undefined, reason: job.reason,
+        timeWindow: j.time_window, best: offered(job.best!), second: job.second ? offered(job.second) : undefined, reason: job.reason, lang: customerLang,
       });
     case "booking":
       return buildBookingBrief({
         providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, problem: j.problem, sector: j.sector, address: r.address,
-        slot: job.option?.slot ?? null, slotExact: job.option?.slot_exact ?? false, visitCharge: job.option?.visit_charge ?? null,
+        slot: job.option?.slot ?? null, slotExact: job.option?.slot_exact ?? false, visitCharge: job.option?.visit_charge ?? null, lang: proLang,
       });
     case "reconfirm":
       return buildReconfirmBrief({
         providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, sector: j.sector, slot: r.booking?.slot ?? null,
-        slotExact: r.booking?.slot_exact !== false, visitCharge: r.booking?.visit_charge ?? null,
+        slotExact: r.booking?.slot_exact !== false, visitCharge: r.booking?.visit_charge ?? null, lang: proLang,
       });
     case "arrival":
-      return buildArrivalBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, sector: j.sector });
+      return buildArrivalBrief({ providerPhone: phoneFor(job.provider!), providerName: job.provider!.name, category: j.category, sector: j.sector, lang: proLang });
     default:
       throw new Error("This kind of call cannot be placed for real");
   }
@@ -254,7 +257,7 @@ class RealVoice extends DemoVoice {
   readonly real = REAL_STEPS;
   async begin(job: CallJob) {
     // The reference tag lets us find this call in Fo's history if the answer to this request never reaches us.
-    return beginLiveCall(`${briefFor(job)}\n\n(Internal reference for Hogaya's records. Do not say it on the call: ${callMarker(job.callId ?? "none")})`);
+    return beginLiveCall(`${await briefFor(job)}\n\n(Internal reference for Hogaya's records. Do not say it on the call: ${callMarker(job.callId ?? "none")})`);
   }
   async recover(call: CallRecord): Promise<Recovery> {
     return recoverLiveCall(call);
