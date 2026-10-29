@@ -12,7 +12,7 @@ stop; rm -f /tmp/hogaya-3000.log /tmp/hogaya-3100.log
 [ "${SKIP_BUILD:-0}" = 1 ] || npm run build 2>&1 | grep -E "rror|Compiled"
 FAIL=0
 run() { echo "=== npm run $1"; npm run "$1" > /tmp/t.out 2>&1; RC=$?; grep -E "^(ok|ALL PASSED|FAILED)|AssertionError|Error:" /tmp/t.out | head -40; [ $RC = 0 ] || FAIL=1; }
-run test:state; run test:db; run test:fo-poll
+run test:state; run test:briefs; run test:db; run test:fo-poll
 stop; sim; reh; sleep 6
 run test:flow          # simulated server (3000) + rehearsal server (3100)
 run test:access        # against 3000

@@ -14,6 +14,7 @@
     "operator:password": "tsx --env-file-if-exists=.env.local scripts/set-operator-password.ts",
     "test:state": "tsx scripts/test-state.ts",
     "test:flow": "tsx scripts/test-flow.ts",
+    "test:briefs": "tsx scripts/test-briefs.ts",
     "test:db": "tsx scripts/test-db.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts"
   },
