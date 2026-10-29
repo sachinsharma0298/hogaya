@@ -48,7 +48,7 @@ async function statusOf(f: Found): Promise<Review> {
 export interface PersonDetail {
   key: string; name: string; email: string; phone: string; country: string; role: "customer" | "pro"; status: Review;
   has_login: boolean; signed_up_at?: string; reviewed_at?: string; reviewed_by?: string; notes: string;
-  pro?: { categories: Category[]; area: string; visit_charge: string; consent_text: string; consent_at: string; reliability: number; on_time_pct: number; jobs: number; no_shows: number; opt_out: boolean };
+  pro?: { pending_changes?: { categories?: Category[]; area?: string; visit_charge?: string; requested_at: string }; categories: Category[]; area: string; visit_charge: string; consent_text: string; consent_at: string; reliability: number; on_time_pct: number; jobs: number; no_shows: number; opt_out: boolean };
   bookings: { id: string; category: string; state: string; problem: string; created_at: string }[];
 }
 
@@ -76,6 +76,7 @@ export async function getPerson(key: string): Promise<PersonDetail | undefined> 
     reviewed_by: x?.reviewed_by || u?.reviewed_by || (p && status === "approved" ? p.onboarded_by : undefined),
     notes: f.email ? await getPersonNotes(f.email) : "",
     pro: isPro ? {
+      pending_changes: p?.pending_changes,
       categories: p ? ((p.categories ?? [p.category]) as Category[]) : x?.categories ?? [], area: p?.area ?? x?.area ?? "", visit_charge: p?.visit_charge ?? x?.visit_charge ?? "",
       consent_text: p?.consent_text || x?.consent_text || (p ? PRO_ONBOARD_CONSENT : "(wording not saved)"), consent_at: p?.consent_date ?? x?.consent_at ?? "",
       reliability: p?.reliability ?? 0, on_time_pct: p?.on_time_pct ?? 0, jobs: p?.jobs ?? 0, no_shows: p?.no_shows ?? 0, opt_out: p?.opt_out ?? false,
@@ -149,6 +150,24 @@ export async function editPerson(key: string, b: { name?: unknown; phone?: unkno
   if (u && (name !== undefined || phone !== undefined)) await updateProfileDetails(u.id, name ?? u.name, phone);
   if (p) await updateProvider(p.id, (z) => { if (name) z.name = name; if (phone) z.phone = phone; if (area) z.area = area; if (visit) z.visit_charge = visit; if (cats) { z.categories = cats; z.category = cats[0]; } });
   if (x) await updatePendingPro(x.id, { name, phone, area, visit_charge: visit, categories: cats });
+  return { ok: true };
+}
+
+/** A Pro asked to change categories, area or visit charge from their own profile page. Approve applies it; reject drops it. */
+export async function decideProChanges(key: string, approve: boolean): Promise<Result> {
+  const f = await resolve(key);
+  const p = f?.provider;
+  if (!p) return fail("Not found.", 404);
+  const ch = p.pending_changes;
+  if (!ch) return fail("There is no pending change for this Pro.");
+  await updateProvider(p.id, (z) => {
+    if (approve) {
+      if (ch.categories?.length) { z.categories = ch.categories; z.category = ch.categories[0]; }
+      if (ch.area) z.area = ch.area;
+      if (ch.visit_charge) z.visit_charge = ch.visit_charge;
+    }
+    z.pending_changes = undefined;
+  });
   return { ok: true };
 }
 

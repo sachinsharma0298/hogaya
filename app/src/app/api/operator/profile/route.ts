@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server";
 import { toE164 } from "@/lib/phone";
 import { requireRole } from "@/lib/guard";
-import { getOperatorProfile, phoneInUseByOthers, saveOperatorProfile } from "@/lib/store";
+import { getOperatorProfile, listPendingCustomers, listPendingPros, listRequests, phoneInUseByOthers, saveOperatorProfile } from "@/lib/store";
 
 // Operator only: display name and phone. The email and password are not editable here.
 export async function GET() {
   const auth = await requireRole("operator");
   if ("error" in auth) return auth.error;
-  return NextResponse.json({ ...(await getOperatorProfile()), email: auth.user.email ?? "" });
+  const [all, pc, pp] = await Promise.all([listRequests(), listPendingCustomers(), listPendingPros()]);
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const done = (s: string) => s === "completed" || s === "closed";
+  const stats = {
+    total: all.length,
+    live: all.filter((r) => !r.archived && !done(r.state) && r.state !== "cancelled").length, // still moving: not finished, not cancelled
+    completed: all.filter((r) => done(r.state)).length,
+    flagged: all.filter((r) => r.state === "flagged" || r.flags.some((f) => !f.resolved_at)).length,
+    pending: pc.length + pp.length,
+    calls_week: all.reduce((n, r) => n + r.calls.filter((c) => new Date(c.started_at).getTime() >= weekAgo).length, 0),
+  };
+  return NextResponse.json({ ...(await getOperatorProfile()), email: auth.user.email ?? "", stats });
 }
 
 export async function PUT(req: Request) {

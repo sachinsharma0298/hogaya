@@ -38,21 +38,23 @@ function providerFromRow(r: Row): Provider {
     consent_ai_call: r.consent_ai_call as boolean, consent_date: r.consent_date as string, consent_text: (r.consent_text as string) || undefined, opt_out: r.opt_out as boolean,
     reliability: r.reliability as number, on_time_pct: r.on_time_pct as number, jobs: r.jobs as number,
     no_shows: r.no_shows as number, demo: r.demo as boolean,
+    working_hours: (r.working_hours as string) || undefined, bio: (r.bio as string) || undefined,
+    pending_changes: (r.pending_changes as Provider["pending_changes"]) ?? undefined,
     onboarded_by: (r.onboarded_by as string) || undefined, onboarded_at: iso(r.onboarded_at), verified: r.onboarded_at != null,
   };
 }
 
 async function writeProvider(c: Queryable, p: Provider, insert: boolean) {
   const cols = [p.id, p.name, p.category, pgArray(p.categories ?? [p.category]), p.area ?? "", p.visit_charge ?? "", p.phone, p.email ?? "",
-    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null, p.consent_text ?? ""];
+    p.consent_ai_call, p.consent_date, p.opt_out, p.reliability, p.on_time_pct, p.jobs, p.no_shows ?? 0, p.demo, p.onboarded_by ?? "", p.onboarded_at ?? null, p.consent_text ?? "", p.working_hours ?? "", p.bio ?? "", p.pending_changes ? JSON.stringify(p.pending_changes) : null];
   if (insert) {
     await c.query(
-      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at,consent_text)
-       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz,$19)`, cols);
+      `insert into providers (id,name,category,categories,area,visit_charge,phone,email,consent_ai_call,consent_date,opt_out,reliability,on_time_pct,jobs,no_shows,demo,onboarded_by,onboarded_at,consent_text,working_hours,bio,pending_changes)
+       values ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::timestamptz,$19,$20,$21,$22::text::jsonb)`, cols);
   } else {
     await c.query(
       `update providers set name=$2,category=$3,categories=$4::text[],area=$5,visit_charge=$6,phone=$7,email=$8,consent_ai_call=$9,consent_date=$10,opt_out=$11,
-       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz,consent_text=$19 where id=$1`, cols);
+       reliability=$12,on_time_pct=$13,jobs=$14,no_shows=$15,demo=$16,onboarded_by=$17,onboarded_at=$18::timestamptz,consent_text=$19,working_hours=$20,bio=$21,pending_changes=$22::text::jsonb where id=$1`, cols);
   }
 }
 

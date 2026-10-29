@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { findAuthUserIdByEmail, setAuthPassword, validPassword } from "@/lib/accounts";
 import { requireRole } from "@/lib/guard";
-import { approvePerson, deletePerson, editPerson, getPerson, rejectPerson, resolvePerson } from "@/lib/people";
+import { approvePerson, decideProChanges, deletePerson, editPerson, getPerson, rejectPerson, resolvePerson } from "@/lib/people";
 import { resolvePasswordResets, savePersonNotes, setMustChangePassword } from "@/lib/store";
 
 // Operator only: one person (customer or Pro) with everything we know, and the actions on them.
@@ -24,6 +24,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ key: st
   switch (b.action) {
     case "approve": return done(await approvePerson(key, by));
     case "reject": return done(await rejectPerson(key, by));
+    case "approve_changes": return done(await decideProChanges(key, true));
+    case "reject_changes": return done(await decideProChanges(key, false));
     case "edit": return done(await editPerson(key, b));
     case "notes": {
       const f = await resolvePerson(key);

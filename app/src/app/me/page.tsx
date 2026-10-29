@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Plus } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
-import { StateChip } from "@/app/operator/booking-list";
+import { stateChipClass } from "@/app/operator/booking-list";
 import { AccountBanner } from "@/components/account-banner";
 import { useSession } from "@/components/session";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function MyBookings() {
         {rows?.map((r) => (
           <Link key={r.id} href={`/b/${r.id}`} className="flex items-center gap-3 rounded-3xl border bg-card p-4 transition hover:border-primary/60">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2"><span className="font-semibold">{t(`cat.${r.category}`)}</span><StateChip state={r.state} /></div>
+              <div className="flex items-center justify-between gap-2"><span className="font-semibold">{t(`cat.${r.category}`)}</span><span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${stateChipClass(r.state)}`}>{t(`st.${r.state}`)}</span></div>
               <p className="mt-0.5 truncate text-sm text-foreground/85">{r.problem}</p>
               <p className="mt-0.5 text-xs text-foreground/65">{r.sector} · {new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
             </div>

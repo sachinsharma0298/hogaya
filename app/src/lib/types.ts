@@ -19,6 +19,13 @@ export interface User {
   created_at: string;
 }
 
+export interface PendingProfileChange {
+  categories?: Category[];
+  area?: string;
+  visit_charge?: string;
+  requested_at: string;
+}
+
 export interface Provider {
   id: string;
   name: string;
@@ -36,6 +43,9 @@ export interface Provider {
   consent_text?: string; // the exact wording the Pro agreed to
   opt_out: boolean;
   review_status?: Review; // operator console only: Approved while on the approved list, Rejected after the operator rejects
+  working_hours?: string; // free text the Pro writes, e.g. "Mon-Sat 9 AM-7 PM"
+  bio?: string; // a short intro the Pro writes
+  pending_changes?: PendingProfileChange; // categories, area or visit charge the Pro asked to change: live only after the operator approves
   reliability: number; // 0-100, measured
   on_time_pct: number;
   jobs: number;
