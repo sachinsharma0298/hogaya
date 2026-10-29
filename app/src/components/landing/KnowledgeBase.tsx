@@ -17,7 +17,7 @@ export function KnowledgeBase() {
   const { t } = useT();
   const [kind, setKind] = useState<KbKind>("customers");
   return (
-    <section id="guide" aria-labelledby="kb-h" className="mx-auto w-full max-w-6xl scroll-mt-4 px-5 py-12">
+    <section id="guide" aria-labelledby="kb-h" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-12">
       <Reveal><h2 id="kb-h" className="text-3xl font-bold tracking-tight md:text-4xl">{t("kb.title")}</h2></Reveal>
       <div role="tablist" aria-label={t("kb.title")} className="mt-5 grid grid-cols-3 gap-1 rounded-2xl border bg-card p-1 text-sm font-medium md:inline-grid md:min-w-[28rem]">
         {KINDS.map((k) => (

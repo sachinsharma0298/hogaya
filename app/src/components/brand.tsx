@@ -8,9 +8,9 @@ import { useSession } from "@/components/session";
 export function Brand({ small }: { small?: boolean }) {
   const { t } = useT();
   return (
-    <Link href="/" className="inline-flex items-center gap-2">
+    <Link href="/" className="inline-flex min-h-11 items-center gap-2">
       <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-        <BadgeCheck className="size-5" />
+        <BadgeCheck className="size-5" aria-hidden="true" />
       </span>
       <span className="leading-tight">
         <span className="block text-lg font-bold tracking-tight">Hogaya</span>
@@ -38,7 +38,7 @@ export function LangToggle() {
           type="button"
           onClick={() => setLang(l.id)}
           aria-pressed={lang === l.id}
-          className={`rounded-full px-2.5 py-1 transition ${lang === l.id ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}
+          className={`inline-flex min-h-11 items-center rounded-full px-3 transition ${lang === l.id ? "bg-primary text-primary-foreground" : "text-foreground/80 hover:text-foreground"}`}
         >
           {l.label}
         </button>
@@ -51,7 +51,7 @@ export function CustomerShell({ children, right }: { children: React.ReactNode; 
   const { t } = useT();
   const { user, logout } = useSession();
   return (
-    <main className="mx-auto w-full max-w-[520px] flex-1 px-5 pb-16 pt-4">
+    <main id="main" className="mx-auto w-full max-w-[520px] flex-1 px-5 pb-16 pt-4">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
         <Brand />
         <div className="flex flex-col items-end gap-1.5">

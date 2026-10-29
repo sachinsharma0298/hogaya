@@ -14,7 +14,7 @@ const VISUALS = [StepBooking, StepCall, StepOptions, StepProJob];
 export function HowItWorks() {
   const { t } = useT();
   return (
-    <section id="how" aria-labelledby="how-h" className="mx-auto w-full max-w-6xl scroll-mt-4 px-5 py-12">
+    <section id="how" aria-labelledby="how-h" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-12">
       <Reveal><h2 id="how-h" className="text-3xl font-bold tracking-tight md:text-4xl">{t("lp.how.title")}</h2><p className="mt-2 max-w-2xl text-base text-foreground/80">{t("lp.how.sub")}</p></Reveal>
       <ol className="relative mt-8 space-y-10 md:space-y-14">
         <ScrollLine className="left-[19px] top-4 bottom-4 md:left-1/2 md:-ml-1" />

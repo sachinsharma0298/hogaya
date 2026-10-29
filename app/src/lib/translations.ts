@@ -3,6 +3,7 @@
 import { FORMS } from "./i18n/forms";
 import { LANDING } from "./i18n/landing";
 import { PROFILES } from "./i18n/profiles";
+import { UI } from "./i18n/ui";
 export type Lang = "hing" | "en" | "hi";
 export const LANGS: { id: Lang; label: string }[] = [
   { id: "en", label: "English" },
@@ -1121,7 +1122,7 @@ const hi: Dict = {
 
 // Later files override earlier keys, so each area (forms, profiles, landing and help) owns its own wording.
 export const DICTS: Record<Lang, Dict> = {
-  hing: { ...hing, ...FORMS.hing, ...PROFILES.hing, ...LANDING.hing },
-  en: { ...en, ...FORMS.en, ...PROFILES.en, ...LANDING.en },
-  hi: { ...hi, ...FORMS.hi, ...PROFILES.hi, ...LANDING.hi },
+  hing: { ...hing, ...FORMS.hing, ...PROFILES.hing, ...LANDING.hing, ...UI.hing },
+  en: { ...en, ...FORMS.en, ...PROFILES.en, ...LANDING.en, ...UI.en },
+  hi: { ...hi, ...FORMS.hi, ...PROFILES.hi, ...LANDING.hi, ...UI.hi },
 };

@@ -9,7 +9,7 @@ const CARDS: TrustIconName[] = ["ai", "consent", "address", "reconfirm", "code",
 export function TrustSection() {
   const { t } = useT();
   return (
-    <section aria-labelledby="trust-h" className="mx-auto w-full max-w-6xl px-5 py-12">
+    <section id="trust" aria-labelledby="trust-h" className="mx-auto scroll-mt-20 w-full max-w-6xl px-5 py-12">
       <Reveal><h2 id="trust-h" className="text-3xl font-bold tracking-tight md:text-4xl">{t("lp.trust.title")}</h2><p className="mt-2 max-w-2xl text-base text-foreground/80">{t("lp.trust.sub")}</p></Reveal>
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((name, i) => (
