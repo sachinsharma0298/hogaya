@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BookCta } from "@/components/cta";
 import { Faq } from "@/components/landing/Faq";
 import { KbIllustration, type KbKind } from "@/components/landing/KbIllustration";
 import { GUIDES } from "@/components/landing/KnowledgeBase";
@@ -26,7 +27,7 @@ function Guide({ kind }: { kind: KbKind }) {
   const { t } = useT();
   const steps = GUIDES[kind].steps;
   return (
-    <section id={kind} aria-labelledby={`${kind}-h`} className="scroll-mt-6 py-8">
+    <section id={kind} aria-labelledby={`${kind}-h`} className="scroll-mt-20 py-8">
       <Reveal className="flex items-center gap-4">
         <KbIllustration kind={kind} className="w-28 shrink-0 sm:w-36" />
         <div>
@@ -58,7 +59,7 @@ export default function HelpPage() {
   return (
     <div className="flex-1">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-4xl px-5 pb-8">
+      <main id="main" className="mx-auto w-full max-w-4xl px-5 pb-8">
         <h1 className="mt-4 text-4xl font-bold tracking-tight">{t("help.title")}</h1>
         <p className="mt-2 max-w-2xl text-base text-foreground/80">{t("help.sub")}</p>
         <nav aria-label={t("help.title")} className="mt-5 flex flex-wrap gap-2 text-sm font-medium">
@@ -68,12 +69,12 @@ export default function HelpPage() {
         <Guide kind="customers" />
         <Guide kind="pros" />
         <Guide kind="judges" />
-        <section id="faq" aria-labelledby="faq-h" className="scroll-mt-6 py-8">
+        <section id="faq" aria-labelledby="faq-h" className="scroll-mt-20 py-8">
           <h2 id="faq-h" className="mb-5 text-2xl font-bold tracking-tight md:text-3xl">{t("faq.title")}</h2>
           <Faq />
           <p className="mt-5 text-sm text-foreground/80">{CONTACT ? <>{t("help.contact")} <a href={`mailto:${CONTACT}`} className="font-medium text-primary underline underline-offset-4">{CONTACT}</a></> : t("help.contact.none")}</p>
         </section>
-        <p className="py-6 text-center"><Link href="/book" className="inline-flex h-12 items-center rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground">{t("lp.cta.book")}</Link></p>
+        <p className="py-6 text-center"><BookCta /></p>
       </main>
       <SiteFooter />
     </div>

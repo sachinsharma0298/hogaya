@@ -1,6 +1,5 @@
 "use client";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ProCta } from "@/components/cta";
 import { useT } from "@/lib/lang";
 import { BenefitIcon, type BenefitIconName } from "./BenefitIcon";
 import { ProToolbox } from "./ProToolbox";
@@ -13,7 +12,7 @@ const BENEFITS: { k: string; icon: BenefitIconName }[] = [{ k: "b1", icon: "jobs
 export function ProsSection() {
   const { t } = useT();
   return (
-    <section id="pros" aria-labelledby="pros-h" className="mx-auto w-full max-w-6xl scroll-mt-4 px-5 py-12">
+    <section id="pros" aria-labelledby="pros-h" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 py-12">
       <div className="grid items-center gap-8 md:grid-cols-2 md:gap-12">
         <Reveal>
           <h2 id="pros-h" className="text-3xl font-bold tracking-tight md:text-4xl">{t("lp.pro.title")}</h2>
@@ -28,7 +27,7 @@ export function ProsSection() {
               </li>
             ))}
           </ol>
-          <Link href="/pro/join" className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground">{t("lp.cta.pro")} <ArrowRight className="size-4" /></Link>
+          <ProCta arrow className="mt-6" />
         </Reveal>
         <Reveal delay={1} className="space-y-6">
           <ProToolbox className="hidden md:block" />

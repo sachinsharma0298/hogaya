@@ -2,12 +2,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { CustomerShell, StateBox } from "@/components/brand";
 import { stateChipClass } from "@/app/operator/booking-list";
 import { AccountBanner } from "@/components/account-banner";
 import { useSession } from "@/components/session";
-import { Button } from "@/components/ui/button";
+import { BookCta } from "@/components/cta";
 import { CallLangPicker, defaultCallLang } from "@/components/call-lang-picker";
 import type { CallLang } from "@/lib/call-scripts/hogaya-context";
 import { useT } from "@/lib/lang";
@@ -53,7 +53,7 @@ export default function MyBookings() {
       <AccountBanner />
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">{t("me.title")}</h1>
-        <Link href="/book" className="inline-flex h-9 items-center gap-1 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground"><Plus className="size-4" /> {t("me.new")}</Link>
+        <BookCta size="sm" />
       </div>
       <p className="mt-1 text-sm text-foreground/75">{user.name}</p>
       <CallLanguage />
@@ -63,7 +63,7 @@ export default function MyBookings() {
         {rows && rows.length === 0 && (
           <>
             <StateBox title={t("me.empty.title")} body={t("me.empty.body")} />
-            <Link href="/book"><Button className="mt-3 h-12 w-full rounded-2xl text-base">{t("me.new")}</Button></Link>
+            <BookCta className="mt-3 w-full" />
           </>
         )}
         {rows?.map((r) => (

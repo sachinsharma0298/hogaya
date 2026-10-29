@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { useT } from "@/lib/lang";
+import { BookCta, ProCta } from "@/components/cta";
 import { Faq } from "@/components/landing/Faq";
 import { HeroPhone } from "@/components/landing/HeroPhone";
 import { HomeScene } from "@/components/landing/HomeScene";
@@ -21,15 +21,15 @@ export default function Landing() {
   return (
     <div className="flex-1">
       <SiteHeader />
-      <main>
+      <main id="main">
         <section className="mx-auto grid w-full max-w-6xl items-center gap-8 px-5 pb-10 pt-4 md:grid-cols-[1.05fr_1fr] md:gap-10 md:pt-10">
           <div>
             <p className="mb-3 inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-semibold text-primary">{t("brand.tagline")}</p>
             <h1 className="text-[34px] font-bold leading-[1.08] tracking-tight md:text-5xl">{t("lp.hero.title")}</h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-foreground/85 md:text-lg">{t("lp.hero.sub")}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/book" className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-base font-semibold text-primary-foreground">{t("lp.cta.book")} <ArrowRight className="size-4" /></Link>
-              <Link href="/pro/join" className="inline-flex h-12 items-center justify-center rounded-2xl border bg-card px-6 text-base font-semibold">{t("lp.cta.pro")}</Link>
+              <BookCta arrow />
+              <ProCta />
             </div>
           </div>
           <div className="grid items-center gap-5 sm:grid-cols-[minmax(0,230px)_1fr] md:grid-cols-1 lg:grid-cols-[minmax(0,230px)_1fr]">
@@ -62,7 +62,7 @@ export default function Landing() {
 
         <KnowledgeBase />
 
-        <section id="faq" aria-labelledby="faq-h" className="mx-auto w-full max-w-3xl scroll-mt-4 px-5 py-12">
+        <section id="faq" aria-labelledby="faq-h" className="mx-auto w-full max-w-3xl scroll-mt-20 px-5 py-12">
           <Reveal><h2 id="faq-h" className="mb-5 text-3xl font-bold tracking-tight md:text-4xl">{t("faq.title")}</h2></Reveal>
           <Faq />
         </section>
