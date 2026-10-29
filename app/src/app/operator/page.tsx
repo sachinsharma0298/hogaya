@@ -75,16 +75,16 @@ export default function Operator() {
       )}
       <div className="mx-auto w-full max-w-7xl px-6 py-5">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+          <div className="flex max-w-full flex-wrap items-center gap-x-4 gap-y-2">
             <Brand small />
             <span className="rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background">Operator</span>
-            <nav aria-label="Console sections" className="flex rounded-full border bg-card p-0.5 text-sm font-medium">
+            <nav aria-label="Console sections" className="flex max-w-full flex-wrap rounded-3xl border bg-card p-0.5 text-sm font-medium">
               {(["bookings", "pending", "providers", "approved", "accounts", "resets"] as const).map((t) => (
                 <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={`rounded-full px-4 py-1.5 capitalize transition ${tab === t ? "bg-primary text-primary-foreground" : "text-foreground/70 hover:text-foreground"}`}>{t === "resets" ? "Password reset" : t}{t === "resets" && (resets?.length ?? 0) > 0 && <span aria-label={`${resets?.length} password reset requests`} className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t ? "bg-primary-foreground text-primary" : "bg-destructive text-white"}`}>{resets?.length}</span>}{t === "pending" && pendingCount > 0 && <span aria-label={`${pendingCount} waiting for approval`} className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${tab === t ? "bg-primary-foreground text-primary" : "bg-destructive text-white"}`}>{pendingCount}</span>}</button>
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <button type="button" onClick={resetAll} className="rounded-lg border border-destructive/40 px-3 py-1.5 text-destructive hover:bg-destructive/10">Reset all data</button>
             <Link href="/operator/profile" className="text-foreground/80 underline-offset-4 hover:underline">My profile{session.user?.name ? ` (${session.user.name})` : ""}</Link>
             <Link href="/" className="text-primary underline-offset-4 hover:underline">Customer site →</Link>

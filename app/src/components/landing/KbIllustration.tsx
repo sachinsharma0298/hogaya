@@ -3,7 +3,7 @@ export type KbKind = "customers" | "pros" | "judges";
 /** A small illustration for each guide card: a customer with a phone, a pro with a toolbox, a tester with a checklist. No text. */
 export function KbIllustration({ kind, className = "" }: { kind: KbKind; className?: string }) {
   return (
-    <svg viewBox="0 0 120 80" className={`h-auto w-full ${className}`} aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 120 80" className={`h-auto ${className || "w-full"}`} aria-hidden="true" focusable="false">
       <rect width="120" height="80" rx="16" fill="#fde9d6" />
       <rect y="66" width="120" height="14" fill="#cfe9d6" />
       {kind === "customers" && (<>

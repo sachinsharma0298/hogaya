@@ -33,7 +33,7 @@ export function KnowledgeBase() {
           </ol>
           <Link href={`/help#${kind}`} className="mt-5 inline-block text-sm font-semibold text-primary underline underline-offset-4">{t("kb.read")} →</Link>
         </div>
-        <KbIllustration kind={kind} className="mx-auto max-w-[16rem]" />
+        <KbIllustration kind={kind} className="mx-auto w-full max-w-[16rem]" />
       </div>
     </section>
   );
