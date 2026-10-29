@@ -1,6 +1,7 @@
 // All customer and provider screen text lives here. The operator dashboard is English-only and does not use it.
 // Three languages: English (default), Hinglish (Roman-script Hindi-English mix), and Hindi (Devanagari).
 import { FORMS } from "./i18n/forms";
+import { LANDING } from "./i18n/landing";
 import { PROFILES } from "./i18n/profiles";
 export type Lang = "hing" | "en" | "hi";
 export const LANGS: { id: Lang; label: string }[] = [
@@ -1120,7 +1121,7 @@ const hi: Dict = {
 
 // Later files override earlier keys, so each area (forms, profiles, landing and help) owns its own wording.
 export const DICTS: Record<Lang, Dict> = {
-  hing: { ...hing, ...FORMS.hing, ...PROFILES.hing },
-  en: { ...en, ...FORMS.en, ...PROFILES.en },
-  hi: { ...hi, ...FORMS.hi, ...PROFILES.hi },
+  hing: { ...hing, ...FORMS.hing, ...PROFILES.hing, ...LANDING.hing },
+  en: { ...en, ...FORMS.en, ...PROFILES.en, ...LANDING.en },
+  hi: { ...hi, ...FORMS.hi, ...PROFILES.hi, ...LANDING.hi },
 };

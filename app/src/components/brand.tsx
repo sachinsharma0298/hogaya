@@ -23,7 +23,7 @@ export function Brand({ small }: { small?: boolean }) {
 export function DemoBadge({ label }: { label?: string }) {
   return (
     <span className="rounded-full border border-dashed border-primary/50 bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">
-      {label ?? "Demo"}
+      {label ?? "Preview"}
     </span>
   );
 }

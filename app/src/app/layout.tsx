@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hogaya — Kaam hogaya. Pakka.",
-  description: "Tell us what needs fixing. Hogaya finds a reliable local pro, confirms the time and price, and makes sure they show up.",
+  metadataBase: new URL(process.env.APP_URL ?? "https://hogaya-sandy.vercel.app"),
+  title: "Hogaya — Done. Guaranteed.",
+  description: "Home repairs, booked and confirmed. Someone actually shows up. Hogaya's AI assistant calls local pros, you pick one, and a service code at the door proves they came.",
+  openGraph: { title: "Hogaya — Done. Guaranteed.", description: "Home repairs, booked and confirmed. Someone actually shows up.", siteName: "Hogaya", type: "website" },
+  twitter: { card: "summary_large_image", title: "Hogaya — Done. Guaranteed.", description: "Home repairs, booked and confirmed. Someone actually shows up." },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
