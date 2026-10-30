@@ -7,7 +7,8 @@ type Dict = Record<string, string>;
 const en: Dict = {
   "qf.title": "Say it once",
   "qf.label": "Tell us what's wrong, when and where. Hold your Wispr Flow key and speak, or type, in Hindi, Hinglish or English.",
-  "qf.ph": "Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.ph": "Example: Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.hint": "Tap the box and speak. The example disappears when you start.",
   "qf.btn": "Fill the form for me",
   "qf.busy": "Filling your form…",
   "qf.done": "Done. Please check each step, then press Send. Filled fields are highlighted.",
@@ -94,7 +95,8 @@ const en: Dict = {
 const hing: Dict = {
   "qf.title": "Ek baar bolein",
   "qf.label": "Bataiye kya kharab hai, kab aur kahan. Apni Wispr Flow key dabakar boliye, ya type kijiye, Hindi, Hinglish ya English mein.",
-  "qf.ph": "Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.ph": "Example: Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.hint": "Box par tap karke boliye. Shuru karte hi example hat jaata hai.",
   "qf.btn": "Mera form bhar do",
   "qf.busy": "Form bhar rahe hain…",
   "qf.done": "Ho gaya. Har step check kijiye, phir Send dabaiye. Bhare hue fields highlight hain.",
@@ -181,7 +183,8 @@ const hing: Dict = {
 const hi: Dict = {
   "qf.title": "एक बार बोलिए",
   "qf.label": "बताइए क्या खराब है, कब और कहाँ। अपनी Wispr Flow कुंजी दबाकर बोलिए, या टाइप कीजिए, हिंदी, हिंग्लिश या अंग्रेज़ी में।",
-  "qf.ph": "Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.ph": "उदाहरण: Bedroom ka fan subah se nahi chal raha, awaaz karta hai par ghoomta nahi. Flat 402, 4th floor, Fortis hospital ke paas, Sector 62 Noida. Kal subah 11 baje aana.",
+  "qf.hint": "बॉक्स पर टैप करके बोलिए। बोलना शुरू करते ही उदाहरण हट जाता है।",
   "qf.btn": "मेरा फ़ॉर्म भर दो",
   "qf.busy": "फ़ॉर्म भर रहे हैं…",
   "qf.done": "हो गया। हर स्टेप जाँचिए, फिर भेजें दबाइए। भरे हुए खाने रंगीन किनारे से दिखेंगे।",

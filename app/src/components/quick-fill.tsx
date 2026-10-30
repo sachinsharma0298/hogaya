@@ -78,9 +78,10 @@ export function QuickFill({ onParsed, note, got, onAdd }: { onParsed: (p: Parsed
         value={text}
         onChange={(e) => { setText(e.target.value); if (state !== "busy") setState("idle"); }}
         placeholder={t("qf.ph")}
-        aria-describedby="qf-status qf-help"
+        aria-describedby="qf-hint qf-status qf-help"
         className="mt-2 min-h-[132px] resize-none bg-background text-base"
       />
+      <p id="qf-hint" className="mt-1 text-xs text-foreground/80">{t("qf.hint")}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={() => fill(text)} disabled={state === "busy" || text.trim().length < PARSE_MIN_CHARS} className="min-h-11 rounded-xl">
           {state === "busy" ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" /> : null}{t("qf.btn")}
