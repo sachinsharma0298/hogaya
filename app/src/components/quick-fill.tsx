@@ -15,33 +15,43 @@ export function QuickFill({ onParsed, note }: { onParsed: (p: ParsedBooking) => 
   const [text, setText] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error" | "limit">("idle");
   const last = useRef(""); // the text we last sent, so the same text is not sent twice
-  const run = useRef(0); // a newer run makes an older answer stale
+  const ctl = useRef<AbortController | null>(null); // the one request in flight
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onParsedRef = useRef(onParsed);
   useEffect(() => { onParsedRef.current = onParsed; });
 
+  /** One request at a time: a newer one aborts the older. One automatic retry for network errors, timeouts and 5xx. */
   async function fill(value: string) {
     const body = value.trim();
-    if (body.length < PARSE_MIN_CHARS) return;
+    if (body.length < PARSE_MIN_CHARS || body === last.current && state === "busy") return;
+    if (timer.current) clearTimeout(timer.current); // the button and the auto-fill must never both fire
     last.current = body;
-    const id = ++run.current;
+    ctl.current?.abort();
+    const mine = new AbortController();
+    ctl.current = mine;
     setState("busy");
-    try {
-      const res = await fetch("/api/book/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: body }) });
-      if (id !== run.current) return;
-      if (res.status === 429) return setState("limit");
-      if (!res.ok) return setState("error");
-      onParsedRef.current((await res.json()) as ParsedBooking);
-      setState("done");
-    } catch {
-      if (id === run.current) setState("error");
+    for (let tryNo = 0; tryNo < 2; tryNo++) {
+      const stop = setTimeout(() => mine.abort(), 25_000); // at least 15 s: the model can take a few seconds
+      try {
+        const res = await fetch("/api/book/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: body }), signal: mine.signal });
+        if (ctl.current !== mine) return; // a newer request took over
+        if (res.status === 429) return setState("limit");
+        if (res.ok) { onParsedRef.current((await res.json()) as ParsedBooking); return setState("done"); }
+        if (res.status < 500) return setState("error");
+      } catch {
+        if (ctl.current !== mine) return;
+      } finally {
+        clearTimeout(stop);
+      }
     }
+    if (ctl.current === mine) setState("error");
   }
 
   useEffect(() => {
     const body = text.trim();
     if (body.length < PARSE_MIN_CHARS || body === last.current) return;
-    const timer = setTimeout(() => fill(body), WAIT_MS);
-    return () => clearTimeout(timer);
+    timer.current = setTimeout(() => fill(body), WAIT_MS);
+    return () => { if (timer.current) clearTimeout(timer.current); };
   }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

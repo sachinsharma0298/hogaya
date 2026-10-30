@@ -72,6 +72,7 @@ function BookForm({ user }: { user: SessionUser }) {
     if (p.problem) { patch.problem = p.problem; filled.push("problem"); }
     if (p.area) { patch.sector = p.area; filled.push("sector"); }
     if (p.address) { patch.address = p.address; filled.push("address"); }
+    if (p.time_window) patch.notes = `Preferred time: ${p.time_window}`; // the exact words about the time stay in the notes
     let past = false;
     if (p.date && p.time) {
       const w = customSlot(p.date, p.time);

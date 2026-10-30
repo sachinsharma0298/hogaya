@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/guard";
-import { parseBooking } from "@/lib/parse-booking";
+import { ParseError, parseBooking } from "@/lib/parse-booking";
 import { PARSE_MAX_CHARS, PARSE_MIN_CHARS } from "@/lib/parse-types";
 
 // "Say it once": suggests booking fields from one sentence. It never creates a booking. The text is not stored or logged.
@@ -22,14 +22,16 @@ export async function POST(req: Request) {
   const auth = await requireRole("customer", "operator");
   if ("error" in auth) return auth.error;
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-  if (tooMany(`u:${auth.user.id}`, 20) || tooMany(`ip:${ip}`, 40)) return NextResponse.json({ error: "Too many tries. Please fill the form by hand." }, { status: 429 });
+  if (tooMany(`u:${auth.user.id}`, 30) || tooMany(`ip:${ip}`, 60)) return NextResponse.json({ error: "Too many tries. Please fill the form by hand." }, { status: 429 });
   const body = await req.json().catch(() => ({}));
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (text.length < PARSE_MIN_CHARS) return NextResponse.json({ error: "Please say a little more." }, { status: 400 });
   if (text.length > PARSE_MAX_CHARS) return NextResponse.json({ error: `Please keep it under ${PARSE_MAX_CHARS} characters.` }, { status: 400 });
   try {
     return NextResponse.json(await parseBooking(text));
-  } catch {
+  } catch (e) {
+    const err = e as ParseError;
+    console.error("book/parse: failed", { kind: err.kind ?? "unknown", status: err.status }); // reason only, never the text
     return NextResponse.json({ error: "Could not read that right now. Please fill the form by hand." }, { status: 502 });
   }
 }

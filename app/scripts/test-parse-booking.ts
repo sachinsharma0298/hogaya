@@ -1,4 +1,4 @@
-// Calls the Claude API (not Fo) with 8 spoken-style inputs and checks what "Say it once" returns. Usage: npm run test:parse-booking
+// Calls the Claude API (not Fo) with 11 spoken-style inputs and checks what "Say it once" returns. Usage: npm run test:parse-booking
 import { parseBooking } from "../src/lib/parse-booking";
 import type { ParsedBooking } from "../src/lib/parse-types";
 
@@ -22,6 +22,12 @@ const CASES: { name: string; text: string; check: (p: ParsedBooking) => string |
     check: (p) => p.category !== null ? "category should be null" : !p.missing_fields.includes("category") ? "missing_fields should list category" : null },
   { name: "Gibberish", text: "asdf qwer zxcv lkjh poiu mnbv",
     check: (p) => p.category !== null || p.problem !== null ? "category and problem should be null" : null },
+  { name: "Area + address + time (English)", text: "The light has been out since this morning, and there is no electricity in the room. I need the electrician by tomorrow at 11 a.m. The address is Noida Sector 63. Nearby location: metro, ground floor, H123.",
+    check: (p) => p.category !== "electrician" ? "category should be electrician" : !/63/.test(p.area ?? "") ? "area should be Noida Sector 63" : !/H123/i.test(p.address ?? "") ? "address should have H123" : !/ground/i.test(p.address ?? "") ? "address should have the floor" : p.date !== ist(1) ? "date should be tomorrow" : p.time !== "11:00" ? "time should be 11:00" : null },
+  { name: "Flat and landmark (Hinglish)", text: "Flat 402, B tower, Sector 62 Noida, Fortis ke paas, AC thanda nahi kar raha, kal dopahar 2 baje",
+    check: (p) => !/62/.test(p.area ?? "") ? "area should have Sector 62" : !/402/.test(p.address ?? "") || !/fortis/i.test(p.address ?? "") ? "address should have 402 and Fortis" : p.time !== "14:00" ? "time should be 14:00" : null },
+  { name: "Exact time", text: "Kal subah 10:30 baje AC ko dekhna hai, paani tapak raha hai, Sector 18 Noida",
+    check: (p) => p.time !== "10:30" ? "time should be 10:30" : p.date !== ist(1) ? "date should be tomorrow" : !p.time_window ? "time_window should keep the spoken time" : null },
 ];
 
 (async () => {
