@@ -127,7 +127,7 @@ function JobCard({ job }: { job: ProJob }) {
         <h2 className="text-base font-semibold leading-snug">{t(`cat.${job.category}`)}</h2>
         <Chip status={job.status} />
       </div>
-      <p className="mt-1.5 text-sm leading-snug"><span className="font-medium">{t("pv.problem")}:</span> {job.problem}{job.notes ? ` (${job.notes})` : ""}</p>
+      <p className="mt-1.5 text-sm leading-snug"><span className="font-medium">{t("pv.problem")}:</span> <span className="whitespace-pre-line break-words">{job.problem}</span>{job.notes ? ` (${job.notes})` : ""}</p>
       <div className="mt-3 space-y-2 text-sm">
         <p className="flex items-center gap-2"><MapPin className="size-4 text-primary" /> <span className="text-foreground/70">{t("pv.location")}:</span> {job.sector}</p>
         {job.requested && <p className="flex items-center gap-2"><CalendarClock className="size-4 text-primary" /> <span className="text-foreground/70">{t("pv.requested")}:</span> {slotText(job.requested, t)}</p>}

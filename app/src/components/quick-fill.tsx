@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic } from "lucide-react";
+import { Check, Circle, Loader2, Mic } from "lucide-react";
 import { useT } from "@/lib/lang";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,10 @@ import { PARSE_MAX_CHARS, PARSE_MIN_CHARS, type ParsedBooking } from "@/lib/pars
 const WAIT_MS = 1500; // Wispr Flow types everything at once, so wait for the text to stop changing
 
 /** The "Say it once" box on /book. It only suggests values (onParsed); it never moves the form forward or submits. */
-export function QuickFill({ onParsed, note }: { onParsed: (p: ParsedBooking) => void; note: React.ReactNode }) {
+export const CHECKLIST = ["problem", "address", "landmark", "area", "time"] as const;
+export type Captured = Record<(typeof CHECKLIST)[number], boolean>;
+
+export function QuickFill({ onParsed, note, got, onAdd }: { onParsed: (p: ParsedBooking) => void; note: React.ReactNode; got: Captured | null; onAdd: (k: (typeof CHECKLIST)[number]) => void }) {
   const { t } = useT();
   const [text, setText] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error" | "limit">("idle");
@@ -57,15 +60,26 @@ export function QuickFill({ onParsed, note }: { onParsed: (p: ParsedBooking) => 
   return (
     <section aria-labelledby="qf-h" className="mt-4 rounded-2xl border bg-accent/40 p-3.5">
       <Label htmlFor="qf" className="block text-base font-semibold leading-snug"><span id="qf-h" className="mb-0.5 flex items-center gap-1.5 text-primary"><Mic className="size-4" aria-hidden="true" /> {t("qf.title")}</span>{t("qf.label")}</Label>
+      <p className="mt-2 text-sm font-semibold">{t("qf.say")}</p>
+      <ol className="mt-1 space-y-0.5 text-sm">
+        {CHECKLIST.map((k, i) => (
+          <li key={k} className="flex min-h-7 flex-wrap items-center gap-x-2">
+            {got ? (got[k] ? <Check className="size-4 text-green-800" aria-hidden="true" /> : <Circle className="size-4 text-foreground/50" aria-hidden="true" />) : <span className="w-4 text-center text-xs text-foreground/75" aria-hidden="true">{i + 1}</span>}
+            <span>{t(`qf.c${i + 1}`)}</span>
+            {got && got[k] && <span className="sr-only">{t("qf.got")}</span>}
+            {got && !got[k] && <button type="button" onClick={() => onAdd(k)} className="min-h-7 rounded-md px-1 font-medium text-primary underline underline-offset-4">{t("qf.add")}</button>}
+          </li>
+        ))}
+      </ol>
       <Textarea
         id="qf"
-        rows={4}
+        rows={5}
         maxLength={PARSE_MAX_CHARS}
         value={text}
         onChange={(e) => { setText(e.target.value); if (state !== "busy") setState("idle"); }}
         placeholder={t("qf.ph")}
         aria-describedby="qf-status qf-help"
-        className="mt-2 min-h-[112px] resize-none bg-background text-base"
+        className="mt-2 min-h-[132px] resize-none bg-background text-base"
       />
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={() => fill(text)} disabled={state === "busy" || text.trim().length < PARSE_MIN_CHARS} className="min-h-11 rounded-xl">

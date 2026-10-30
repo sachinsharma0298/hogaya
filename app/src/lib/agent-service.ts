@@ -6,6 +6,7 @@
 // Demo bookings use DemoVoice (simulated calls, nobody is phoned). Live bookings (approved numbers only, see lib/live.ts)
 // use RealVoice, which really calls through Fo.
 import { DRY_RUN, MODE } from "./mode";
+import { demoOffer } from "./demo-slot";
 import { canonPhone } from "./phone";
 import { findUser } from "./store";
 import { buildArrivalBrief, buildBookingBrief, buildCustomerBrief, buildProviderBrief, buildReconfirmBrief, type OfferedOption } from "./briefs";
@@ -77,26 +78,42 @@ const DEMO: Record<string, { summary: string; json: ProviderCallJson }> = {
   },
 };
 
+/** A hand-written Pro answer, moved to the time the customer asked for (the rest of the script stays). */
+function fitToRequest(d: { summary: string; json: ProviderCallJson }, timeWindow: string, h: number, windowOnly: boolean) {
+  const fit = demoOffer(timeWindow, h, windowOnly);
+  if (!fit) return d;
+  const first = d.json.provider_name ?? "The Pro";
+  const said = fit.exact ? `He said he can come at ${fit.slot}, and Fo repeated it back and he said yes.` : `He said he can come some time between ${fit.slot} but would not give an exact time.`;
+  return {
+    summary: `${first} picked up. ${said} ${d.summary.split(/\. (?=Visit charge|If the)/).slice(1).join(". ") || ""}`.trim(),
+    json: { ...d.json, slot: fit.slot, slot_raw: fit.exact ? fit.slot : `between ${fit.slot}`, slot_exact: fit.exact },
+  };
+}
+
 // Fake but varied answers for the demo providers that have no hand-written script.
 const SLOTS = [["5:30 PM", "half past five"], ["6:00 PM", "six o'clock"], ["6:45 PM", "quarter to seven"], ["7:00 PM", "seven o'clock"], ["7:30 PM", "half past seven"], ["8:00 PM", "eight o'clock"]];
 const VISITS = ["₹100", "₹150", "₹200", "₹250"];
 const LABOURS = ["₹300–500", "₹400–700", "₹200–350", "₹500–900"];
 
-function demoFor(p: Provider): { summary: string; json: ProviderCallJson } {
-  if (DEMO[p.id]) return DEMO[p.id];
+function demoFor(p: Provider, timeWindow = ""): { summary: string; json: ProviderCallJson } {
   const h = [...p.id].reduce((a, c) => a + c.charCodeAt(0), 0);
+  const scripted = DEMO[p.id];
+  if (scripted) return fitToRequest(scripted, timeWindow, h, scripted.json.slot_exact === false);
   const first = p.name.split(" ")[0];
-  const windowOnly = h % 4 === 0; // some demo providers only give a window, to show "Exact time not confirmed"
-  const [slotNum, slotWords] = SLOTS[h % SLOTS.length];
-  const slot = windowOnly ? "5–8 PM" : slotNum;
+  const windowOnly = h % 4 === 0; // (used below; may become an exact time if the customer asked for one) // some demo providers only give a window, to show "Exact time not confirmed"
+  let [slotNum, slotWords] = SLOTS[h % SLOTS.length];
+  let slot = windowOnly ? "5–8 PM" : slotNum;
+  let exact = !windowOnly;
+  const fit = demoOffer(timeWindow, h, windowOnly); // match what the customer asked for
+  if (fit) { slot = fit.slot; slotNum = fit.slot; slotWords = fit.slotRaw; exact = fit.exact; }
   const visit = VISITS[h % VISITS.length];
   const labour = h % 3 === 0 ? null : LABOURS[h % LABOURS.length];
   const parts = [true, false, null][h % 3];
   const reminder = h % 2 === 0 ? true : null;
   return {
-    summary: `${first} said he can come ${windowOnly ? "some time between 5 and 8 PM but gave no exact time" : `at ${slotWords}, which is ${slot}`}. Visit charge ${visit}. ${labour ? `Work would be roughly ${labour}.` : "He will price the work after seeing it."} ${parts === null ? "He did not say whether he brings parts." : parts ? "He will bring common parts." : "He will not bring parts."} ${reminder ? "A reminder call is fine." : "He did not answer about a reminder call."}`,
+    summary: `${first} said he can come ${!exact ? `some time between ${slot} but gave no exact time` : `at ${slotWords}, which is ${slot}`}. Visit charge ${visit}. ${labour ? `Work would be roughly ${labour}.` : "He will price the work after seeing it."} ${parts === null ? "He did not say whether he brings parts." : parts ? "He will bring common parts." : "He will not bring parts."} ${reminder ? "A reminder call is fine." : "He did not answer about a reminder call."}`,
     json: {
-      ...base, slot, slot_raw: windowOnly ? "between five and eight" : slotWords, slot_exact: !windowOnly, price_quote: labour ? `${visit} visit + ${labour} work` : `${visit} visit; work priced after inspection`,
+      ...base, slot, slot_raw: exact ? slotWords : `between ${slot}`, slot_exact: exact, price_quote: labour ? `${visit} visit + ${labour} work` : `${visit} visit; work priced after inspection`,
       price_type: labour ? "range" : "after_inspection", provider_name: first, visit_charge: visit,
       labour_estimate: labour, brings_parts: parts, reminder_ok: reminder, notes: "",
     },
@@ -138,7 +155,7 @@ function demoResult(job: CallJob): { summary: string; json: unknown } {
     case "provider": {
       if (mock(job, "pro_no_answer")) return { summary: `Simulated: ${p!.name} did not pick up.`, json: { ...base, answered: false, can_do: null, status: "no_reply", notes: "" } };
       if (mock(job, "pro_declines")) return { summary: `Simulated: ${p!.name} said they cannot come.`, json: { ...base, can_do: false, status: "declined", notes: "" } };
-      const d = demoFor(p!);
+      const d = demoFor(p!, job.request?.time_window ?? "");
       return { summary: d.summary, json: d.json };
     }
     case "customer":

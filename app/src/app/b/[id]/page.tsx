@@ -128,7 +128,7 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
         <section aria-label={t("b.request")} className="mt-5 rounded-3xl border bg-card p-5">
           <h2 className="text-sm font-semibold text-foreground/70">{t("b.request")}</h2>
           <p className="mt-1 text-base font-semibold">{t(`cat.${r.category}`)}</p>
-          <p className="mt-1 text-sm leading-snug">{r.problem}</p>
+          <p className="mt-1 whitespace-pre-line break-words text-sm leading-snug">{r.problem}</p>
           <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             <dt className="text-foreground/70">{t("b.where")}</dt><dd>{r.sector}</dd>
             <dt className="text-foreground/70">{t("b.when")}</dt><dd>{slotText(r.time_window, t)}</dd>

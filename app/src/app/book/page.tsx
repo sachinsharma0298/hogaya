@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DictationHint, useFieldLang } from "@/components/dictation-hint";
-import { QuickFill } from "@/components/quick-fill";
+import { QuickFill, type Captured } from "@/components/quick-fill";
 import type { ParsedBooking } from "@/lib/parse-types";
 
 
@@ -47,7 +47,7 @@ function BookForm({ user }: { user: SessionUser }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [aiFilled, setAiFilled] = useState<string[]>([]); // fields the quick-fill suggested
   const [flash, setFlash] = useState<string[]>([]); // highlighted for a moment
-  const [qf, setQf] = useState<{ names: string[]; nocat: boolean; past: boolean; timeMissing: boolean } | null>(null);
+  const [qf, setQf] = useState<{ got: Captured; nocat: boolean; past: boolean; timeMissing: boolean } | null>(null);
 
   const problemLang = useFieldLang(f.problem);
   const addressLang = useFieldLang(f.address);
@@ -72,6 +72,7 @@ function BookForm({ user }: { user: SessionUser }) {
     if (p.problem) { patch.problem = p.problem; filled.push("problem"); }
     if (p.area) { patch.sector = p.area; filled.push("sector"); }
     if (p.address) { patch.address = p.address; filled.push("address"); }
+    if (p.landmark) { patch.landmark = p.landmark; filled.push("landmark"); }
     if (p.time_window) patch.notes = `Preferred time: ${p.time_window}`; // the exact words about the time stay in the notes
     let past = false;
     if (p.date && p.time) {
@@ -81,9 +82,8 @@ function BookForm({ user }: { user: SessionUser }) {
     }
     setF((prev) => ({ ...prev, ...patch }));
     const timeMissing = !filled.includes("time");
-    const names = [!p.problem && "problem", timeMissing && !past && "time", !p.area && "area", !p.address && "address"].filter(Boolean) as string[];
     setAiFilled(filled);
-    setQf({ names, nocat: !p.category, past, timeMissing });
+    setQf({ got: { problem: Boolean(p.problem), address: Boolean(p.address), landmark: Boolean(p.landmark), area: Boolean(p.area), time: !timeMissing }, nocat: !p.category, past, timeMissing });
     setFlash(STEP_FIELDS[1].filter((k) => filled.includes(k)));
   }
 
@@ -94,6 +94,13 @@ function BookForm({ user }: { user: SessionUser }) {
     const timer = setTimeout(() => setFlash([]), 2500);
     return () => clearTimeout(timer);
   }, [step, aiFilled]);
+  /** "Add this": go to the step that has the field and focus it. */
+  function jumpTo(k: "problem" | "address" | "landmark" | "area" | "time") {
+    const to = { problem: [1, "problem"], address: [2, "address"], landmark: [2, "landmark"], area: [2, "sector"], time: [3, ""] } as const;
+    const [n, id] = to[k];
+    setStep(n);
+    setTimeout(() => (id ? document.getElementById(id) : document.querySelector<HTMLElement>("[role=group] button"))?.focus(), 80);
+  }
   const lit = (k: string) => (flash.includes(k) ? FLASH : "");
 
   const seeIt = (k: string) => () => setSeen((p) => ({ ...p, [k]: true }));
@@ -201,10 +208,11 @@ function BookForm({ user }: { user: SessionUser }) {
 
             <QuickFill
               onParsed={applyParsed}
+              got={qf?.got ?? null}
+              onAdd={jumpTo}
               note={qf && (
                 <>
                   {qf.nocat && <p className="mt-1 text-foreground/90">{t("qf.nocat")}</p>}
-                  {qf.names.length > 0 && <p className="mt-1 text-foreground/90">{t("qf.missing", { list: qf.names.map((n) => t(`qf.f.${n}`)).join(", ") })}</p>}
                   {qf.past && <p className="mt-1 text-foreground/90">{t("qf.past")}</p>}
                 </>
               )}
@@ -214,6 +222,7 @@ function BookForm({ user }: { user: SessionUser }) {
             <Textarea
               id="problem"
               lang={problemLang}
+              maxLength={1000}
               rows={3}
               value={f.problem}
               onChange={set("problem")}
@@ -326,7 +335,7 @@ function BookForm({ user }: { user: SessionUser }) {
             <div className="rounded-2xl border bg-card p-4 text-sm">
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
                 <dt className="text-foreground/75">{t("bk.review.category")}</dt><dd className="flex flex-wrap items-center gap-2 font-semibold">{category ? t(`cat.${category}`) : ""}{category && <LiveBadge category={category} />}</dd>
-                <dt className="text-foreground/75">{t("bk.review.problem")}</dt><dd className="break-words">{f.problem}</dd>
+                <dt className="text-foreground/75">{t("bk.review.problem")}</dt><dd className="whitespace-pre-line break-words">{f.problem}</dd>
                 <dt className="text-foreground/75">{t("bk.review.location")}</dt><dd className="break-words">{f.sector}</dd>
                 <dt className="text-foreground/75">{t("bk.review.address")}</dt><dd className="break-words">{f.address}{f.landmark.trim() ? ` (${t("f.landmark")}: ${f.landmark.trim()})` : ""}</dd>
                 <dt className="text-foreground/75">{t("bk.review.time")}</dt><dd>{slotLabel}</dd>

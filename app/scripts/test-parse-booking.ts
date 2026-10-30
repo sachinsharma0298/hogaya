@@ -1,4 +1,4 @@
-// Calls the Claude API (not Fo) with 11 spoken-style inputs and checks what "Say it once" returns. Usage: npm run test:parse-booking
+// Calls the Claude API (not Fo) with 13 spoken-style inputs and checks what "Say it once" returns. Usage: npm run test:parse-booking
 import { parseBooking } from "../src/lib/parse-booking";
 import type { ParsedBooking } from "../src/lib/parse-types";
 
@@ -25,9 +25,13 @@ const CASES: { name: string; text: string; check: (p: ParsedBooking) => string |
   { name: "Area + address + time (English)", text: "The light has been out since this morning, and there is no electricity in the room. I need the electrician by tomorrow at 11 a.m. The address is Noida Sector 63. Nearby location: metro, ground floor, H123.",
     check: (p) => p.category !== "electrician" ? "category should be electrician" : !/63/.test(p.area ?? "") ? "area should be Noida Sector 63" : !/H123/i.test(p.address ?? "") ? "address should have H123" : !/ground/i.test(p.address ?? "") ? "address should have the floor" : p.date !== ist(1) ? "date should be tomorrow" : p.time !== "11:00" ? "time should be 11:00" : null },
   { name: "Flat and landmark (Hinglish)", text: "Flat 402, B tower, Sector 62 Noida, Fortis ke paas, AC thanda nahi kar raha, kal dopahar 2 baje",
-    check: (p) => !/62/.test(p.area ?? "") ? "area should have Sector 62" : !/402/.test(p.address ?? "") || !/fortis/i.test(p.address ?? "") ? "address should have 402 and Fortis" : p.time !== "14:00" ? "time should be 14:00" : null },
+    check: (p) => !/62/.test(p.area ?? "") ? "area should have Sector 62" : !/402/.test(p.address ?? "") ? "address should have 402" : !/fortis/i.test(p.landmark ?? "") ? "landmark should be Fortis" : p.time !== "14:00" ? "time should be 14:00" : null },
   { name: "Exact time", text: "Kal subah 10:30 baje AC ko dekhna hai, paani tapak raha hai, Sector 18 Noida",
     check: (p) => p.time !== "10:30" ? "time should be 10:30" : p.date !== ist(1) ? "date should be tomorrow" : !p.time_window ? "time_window should keep the spoken time" : null },
+  { name: "Full brief, fan (English)", text: "My fan is not working since morning, it makes a humming noise but doesn't spin, I tried another switch too. Come tomorrow at 11 a.m., H123 ground floor, near metro, Noida Sector 63",
+    check: (p) => { const t = p.problem ?? ""; return !/since morning/i.test(t) ? "problem lost 'since morning'" : !/humming/i.test(t) ? "problem lost 'humming'" : !/tried another switch/i.test(t) ? "problem lost 'tried another switch'" : /H123|noida|sector|metro|ground|11|tomorrow/i.test(t) ? "problem still has the address or booking time" : p.time !== "11:00" ? "time should be 11:00" : !/63/.test(p.area ?? "") ? "area should be Sector 63" : !/H123/.test(p.address ?? "") ? "address should have H123" : !/metro/i.test(p.landmark ?? "") ? "landmark should be metro" : null; } },
+  { name: "Full brief (Devanagari Hindi)", text: "मेरे बेडरूम का पंखा सुबह से नहीं चल रहा है, चलाने पर घर्र-घर्र की आवाज़ आती है पर घूमता नहीं, दूसरा स्विच भी लगाकर देखा। कल सुबह 11 बजे आइए, मकान नंबर 45, दूसरी मंज़िल, शिव मंदिर के पास, सेक्टर 15 नोएडा।",
+    check: (p) => { const t = p.problem ?? ""; return !dev.test(t) ? "problem should stay in Devanagari" : !/सुबह से/.test(t) ? "problem lost 'सुबह से'" : !/घूमता नहीं/.test(t) ? "problem lost 'घूमता नहीं'" : !/स्विच/.test(t) ? "problem lost the switch" : /नोएडा|मंदिर|मकान|11|कल/.test(t) ? "problem still has the address or booking time" : p.time !== "11:00" ? "time should be 11:00" : null; } },
 ];
 
 (async () => {
