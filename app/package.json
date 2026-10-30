@@ -17,6 +17,7 @@
     "test:briefs": "tsx scripts/test-briefs.ts",
     "test:summarise-hindi": "tsx --env-file-if-exists=.env.local scripts/test-summarise-hindi.ts",
     "rehearse:language": "tsx --env-file-if-exists=.env.local scripts/rehearse-language.ts",
+    "test:parse-booking": "tsx --env-file-if-exists=.env.local scripts/test-parse-booking.ts",
     "check:i18n": "tsx scripts/check-i18n.ts",
     "test:db": "tsx scripts/test-db.ts",
     "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts"
