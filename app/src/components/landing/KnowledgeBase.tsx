@@ -6,7 +6,7 @@ import { KbIllustration, type KbKind } from "./KbIllustration";
 import { Reveal } from "./Reveal";
 
 export const GUIDES: Record<KbKind, { steps: string[]; short: string[] }> = {
-  customers: { steps: ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"], short: ["c1", "c3", "c4", "c5", "c7"] },
+  customers: { steps: ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"], short: ["c1", "c3", "c4", "c5", "c7"] },
   pros: { steps: ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"], short: ["p1", "p3", "p4", "p5", "p6"] },
   judges: { steps: ["j1", "j2", "j3", "j4"], short: ["j1", "j2", "j3", "j4"] },
 };

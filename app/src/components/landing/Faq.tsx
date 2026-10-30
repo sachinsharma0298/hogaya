@@ -1,8 +1,9 @@
 "use client";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useT } from "@/lib/lang";
 
-export const FAQ_COUNT = 12;
+export const FAQ_COUNT = 15;
 
 /** The questions people ask, as an accordion (native details/summary, so it works without JavaScript). */
 export function Faq() {
@@ -16,6 +17,7 @@ export function Faq() {
             <ChevronDown className="size-4 shrink-0 text-primary transition group-open:rotate-180" />
           </summary>
           <p className="mt-2 text-sm leading-relaxed text-foreground/85">{t(`faq.a${n}`)}</p>
+          {n === 14 && <Link href="/voice" className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">{t("faq.more.voice")} →</Link>}
         </details>
       ))}
     </div>

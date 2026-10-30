@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/landing/SiteHeader";
 import { useT } from "@/lib/lang";
 
 const CONTACT = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "";
-const SECTIONS = { privacy: 6, terms: 6 } as const;
+const SECTIONS = { privacy: 7, terms: 6 } as const;
 
 /** Privacy and Terms: short plain sections, all text from the translations. The last section carries the contact line. */
 export function LegalPage({ kind }: { kind: keyof typeof SECTIONS }) {

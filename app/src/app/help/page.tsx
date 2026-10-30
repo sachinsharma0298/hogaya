@@ -41,7 +41,7 @@ function Guide({ kind }: { kind: KbKind }) {
             <Reveal className="grid items-center gap-4 rounded-3xl border bg-card p-5 sm:grid-cols-[1fr_auto]">
               <div className="flex items-start gap-3">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{i + 1}</span>
-                <div><h3 className="text-base font-semibold leading-snug">{t(`help.${k}.t`)}</h3><p className="mt-1 text-sm leading-relaxed text-foreground/80">{t(`help.${k}.d`)}</p></div>
+                <div><h3 className="text-base font-semibold leading-snug">{t(`help.${k}.t`)}</h3><p className="mt-1 text-sm leading-relaxed text-foreground/80">{t(`help.${k}.d`)}</p>{k === "c9" && <Link href="/voice" className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">{t("faq.more.voice")} →</Link>}</div>
               </div>
               {VISUALS[k] && <div className="mx-auto w-full max-w-[210px] sm:w-[210px]">{VISUALS[k]}</div>}
             </Reveal>

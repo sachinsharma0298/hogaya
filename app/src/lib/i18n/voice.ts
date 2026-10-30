@@ -57,6 +57,18 @@ const en: Dict = {
   "voice.disclaimer": "Wispr Flow is a separate app from a different company. Hogaya works great with it, but is not partnered with or connected to it.",
   "voice.try": "Try booking by voice",
   "lp.hero.voice": "Book by voice",
+  // FAQ, help guide, privacy
+  "faq.q13": "Can I book by speaking?",
+  "faq.a13": "Yes. Hold your Wispr Flow key, describe the problem, time and area in Hindi, Hinglish or English, and Hogaya fills the form. You always review it before sending.",
+  "faq.q14": "What is Wispr Flow?",
+  "faq.a14": "A voice dictation app that types what you say into any text box. Hogaya works great with it.",
+  "faq.q15": "Is my spoken text private?",
+  "faq.a15": "Text in the quick-fill box is sent to an AI service only to fill your form. Hogaya never receives your audio.",
+  "faq.more.voice": "How to book by voice",
+  "help.c9.t": "Or book by speaking",
+  "help.c9.d": "Hold your Wispr Flow key and describe the problem, time and area in Hindi, Hinglish or English. Hogaya fills the form and you review it before sending.",
+  "legal.privacy.s7.t": "Voice quick-fill",
+  "legal.privacy.s7.d": "Text you put in the quick-fill box is sent to an AI service only to fill your booking form. Hogaya never receives your audio.",
 };
 
 const hing: Dict = {
@@ -112,6 +124,18 @@ const hing: Dict = {
   "voice.disclaimer": "Wispr Flow ek alag company ka alag app hai. Hogaya uske saath badhiya chalti hai, lekin uski partner ya usse jodi hui nahi hai.",
   "voice.try": "Voice se booking try kijiye",
   "lp.hero.voice": "Voice se book karein",
+  // FAQ, help guide, privacy
+  "faq.q13": "Kya main bolkar book kar sakta hoon?",
+  "faq.a13": "Haan. Apni Wispr Flow key dabakar problem, time aur area Hindi, Hinglish ya English mein bataiye, aur Hogaya form bhar deti hai. Bhejne se pehle aap hamesha use check karte hain.",
+  "faq.q14": "Wispr Flow kya hai?",
+  "faq.a14": "Ek voice dictation app jo aap jo bolte hain use kisi bhi text box mein type kar deti hai. Hogaya uske saath badhiya chalti hai.",
+  "faq.q15": "Kya meri boli hui baat private hai?",
+  "faq.a15": "Quick-fill box ka text sirf aapka form bharne ke liye ek AI service ko jaata hai. Hogaya ko aapki awaaz (audio) kabhi nahi milti.",
+  "faq.more.voice": "Voice se booking kaise karein",
+  "help.c9.t": "Ya bolkar book karein",
+  "help.c9.d": "Wispr Flow key dabakar problem, time aur area Hindi, Hinglish ya English mein bataiye. Hogaya form bhar deti hai aur bhejne se pehle aap use check karte hain.",
+  "legal.privacy.s7.t": "Voice quick-fill",
+  "legal.privacy.s7.d": "Quick-fill box mein jo text aap daalte hain woh sirf booking form bharne ke liye ek AI service ko jaata hai. Hogaya ko aapki awaaz (audio) kabhi nahi milti.",
 };
 
 const hi: Dict = {
@@ -167,6 +191,18 @@ const hi: Dict = {
   "voice.disclaimer": "Wispr Flow किसी दूसरी कंपनी का अलग ऐप है। Hogaya उसके साथ बढ़िया चलती है, लेकिन उसकी साझेदार या उससे जुड़ी हुई नहीं है।",
   "voice.try": "आवाज़ से बुकिंग आज़माइए",
   "lp.hero.voice": "आवाज़ से बुकिंग करें",
+  // FAQ, help guide, privacy
+  "faq.q13": "क्या मैं बोलकर बुक कर सकता हूँ?",
+  "faq.a13": "हाँ। अपनी Wispr Flow कुंजी दबाकर समस्या, समय और इलाका हिंदी, हिंग्लिश या अंग्रेज़ी में बताइए, और Hogaya फ़ॉर्म भर देती है। भेजने से पहले आप उसे हमेशा जाँचते हैं।",
+  "faq.q14": "Wispr Flow क्या है?",
+  "faq.a14": "एक वॉइस डिक्टेशन ऐप जो आप जो बोलते हैं उसे किसी भी टेक्स्ट बॉक्स में टाइप कर देता है। Hogaya उसके साथ बढ़िया चलती है।",
+  "faq.q15": "क्या मेरी बोली हुई बात निजी है?",
+  "faq.a15": "क्विक-फ़िल बॉक्स का टेक्स्ट सिर्फ़ आपका फ़ॉर्म भरने के लिए एक AI सेवा को भेजा जाता है। Hogaya को आपकी आवाज़ (ऑडियो) कभी नहीं मिलती।",
+  "faq.more.voice": "आवाज़ से बुकिंग कैसे करें",
+  "help.c9.t": "या बोलकर बुक करें",
+  "help.c9.d": "Wispr Flow कुंजी दबाकर समस्या, समय और इलाका हिंदी, हिंग्लिश या अंग्रेज़ी में बताइए। Hogaya फ़ॉर्म भर देती है और भेजने से पहले आप उसे जाँचते हैं।",
+  "legal.privacy.s7.t": "आवाज़ से क्विक-फ़िल",
+  "legal.privacy.s7.d": "क्विक-फ़िल बॉक्स में आप जो टेक्स्ट डालते हैं वह सिर्फ़ बुकिंग फ़ॉर्म भरने के लिए एक AI सेवा को भेजा जाता है। Hogaya को आपकी आवाज़ (ऑडियो) कभी नहीं मिलती।",
 };
 
 export const VOICE: Record<Lang, Dict> = { en, hing, hi };
