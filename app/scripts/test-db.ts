@@ -147,7 +147,7 @@ const mk = (id: string, uid: string): HogayaRequest => ({
   const people = await import("../src/lib/people");
   assert.equal((await people.getPerson(C))?.status, "pending");
   assert.equal((await people.approvePerson(C, "op@x.in")).ok, true);
-  let pc1 = (await people.getPerson(C))!;
+  const pc1 = (await people.getPerson(C))!;
   assert.equal(pc1.status, "approved"); assert.equal(pc1.reviewed_by, "op@x.in"); assert.ok(pc1.reviewed_at); assert.equal(pc1.country, "India (IN)");
   assert.equal((await store.findUser(C))?.approval_seen, false); // "Approved by Hogaya" is shown once
   await store.markApprovalSeen(C); assert.equal((await store.findUser(C))?.approval_seen, true);

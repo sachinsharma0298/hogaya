@@ -116,7 +116,7 @@ function CallRow({ c, post, replyText, setReplyText }: { c: CallRecord; post: (p
           {(c.status === "timed_out" || c.status === "needs_review") && <Button onClick={() => post("check-again", { call_id: c.id })} variant="outline" className="rounded-xl">Check again</Button>}
           {c.status === "unconfirmed" && (
             <div className="space-y-2">
-              <p className="text-xs text-red-800">Hogaya will not send this call again. It is looking for it in Fo's history. If you have checked Fo and no call was placed, you can allow a retry.</p>
+              <p className="text-xs text-red-800">Hogaya will not send this call again. It is looking for it in Fo&apos;s history. If you have checked Fo and no call was placed, you can allow a retry.</p>
               <Button onClick={() => { if (window.confirm("Only press this if Fo's history shows NO call was placed for this attempt. Otherwise a second call may reach the person.")) void post("control", { action: "clear_unconfirmed" }); }} variant="outline" className="rounded-xl">I checked Fo: no call was placed</Button>
             </div>
           )}

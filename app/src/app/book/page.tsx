@@ -90,9 +90,9 @@ function BookForm({ user }: { user: SessionUser }) {
   useEffect(() => { // briefly highlight what was quick-filled on the step now shown
     const here = STEP_FIELDS[step]?.filter((k) => aiFilled.includes(k)) ?? [];
     if (!here.length) return;
-    setFlash(here);
-    const timer = setTimeout(() => setFlash([]), 2500);
-    return () => clearTimeout(timer);
+    const on = setTimeout(() => setFlash(here), 0);
+    const off = setTimeout(() => setFlash([]), 2500);
+    return () => { clearTimeout(on); clearTimeout(off); };
   }, [step, aiFilled]);
   /** "Add this": go to the step that has the field and focus it. */
   function jumpTo(k: "problem" | "address" | "landmark" | "area" | "time") {
