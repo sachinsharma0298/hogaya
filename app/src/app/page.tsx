@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Mic } from "lucide-react";
 import { CATEGORIES } from "@/lib/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { useT } from "@/lib/lang";
@@ -32,6 +33,7 @@ export default function Landing() {
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <BookCta arrow />
               <ProCta />
+              <Link href="/voice" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border bg-card px-6 text-base font-semibold text-primary transition hover:border-primary/60"><Mic className="size-4" aria-hidden="true" /> {t("lp.hero.voice")}</Link>
             </div>
           </div>
           <div className="grid items-center gap-5 sm:grid-cols-[minmax(0,230px)_1fr] md:grid-cols-1 lg:grid-cols-[minmax(0,230px)_1fr]">

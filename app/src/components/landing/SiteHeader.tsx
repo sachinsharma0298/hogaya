@@ -19,6 +19,7 @@ export function SiteHeader() {
   // On the landing page the links scroll to the section; elsewhere they take you to it. FAQ also lives on /help.
   const links = [
     { href: "/#how", key: "nav.how" },
+    { href: "/voice", key: "nav.voice" },
     { href: "/#pros", key: "nav.forpros" },
     { href: "/#trust", key: "nav.trust" },
     { href: path === "/help" ? "#faq" : "/#faq", key: "nav.faq" },
