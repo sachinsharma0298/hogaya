@@ -34,6 +34,7 @@ function head(type: CallType, pref: LangPref, phone: string, opening: Parameters
     "",
     openingBlock(type, pref, { ...opening, categoryHi: catHi(opening.catId), slotHi: spokenTimeHi(opening.slot) || undefined }),
     "If the person who answers is someone else, ask politely for the person named in the opening line.",
+    ...(type === "customer" ? [] : ["You are calling an individual tradesperson on their personal phone, not a business front desk. Never ask if this is the front desk or reception."]),
     "",
     ...questionsBlock(type, sayFor(pref)),
     "",

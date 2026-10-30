@@ -31,6 +31,30 @@ const SUMMARY = "Ramesh can come at 6 PM. {answered: true, status: confirmed}";
   assert.equal(withJson.status, "summary");
   console.log("ok  dialing -> waiting for a NEW message -> summary (with or without JSON)");
 
+  // Fo says the call could not be placed, or returns status "incomplete": the step FAILS with the reason. Nothing is ever redialled here.
+  const INCOMPLETE = '{"answered": true, "can_do": null, "slot": null, "status": "incomplete", "opt_out": false, "callback_requested": false}';
+  const f1 = await pollLiveCall(call(), 5, fake({ reply: { response: "This call couldn't be placed." }, turns: ["x", "This call couldn't be placed."] }));
+  assert.equal(f1.status, "failed"); assert.match((f1 as { error: string }).error, /could not be placed.*NOT redialled/);
+  const f2 = await pollLiveCall(call(), 5, fake({ reply: { response: INCOMPLETE }, turns: ["x", INCOMPLETE] }));
+  assert.equal(f2.status, "failed"); assert.match((f2 as { error: string }).error, /incomplete.*NOT redialled/);
+  const w = { status: "waiting_summary" as const, meta: { baseline: 2, waiting_since: ago(60_000) } };
+  assert.equal((await pollLiveCall(call(w), 5, fake({ turns: ["a", "b", "This call couldn't be placed."] }))).status, "failed");
+  assert.equal((await pollLiveCall(call(w), 5, fake({ turns: ["a", "b", INCOMPLETE] }))).status, "failed");
+  // the race that left a call stuck: the result was already there when the messages were counted (baseline 3 = after the summary)
+  const raced = await pollLiveCall(call({ status: "waiting_summary", meta: { baseline: 3, waiting_since: ago(60_000) } }), 5, fake({ turns: ["a", "b", SUMMARY] }));
+  assert.equal(raced.status, "summary");
+  const racedBad = await pollLiveCall(call({ status: "waiting_summary", meta: { baseline: 3, waiting_since: ago(60_000) } }), 5, fake({ turns: ["a", "b", INCOMPLETE] }));
+  assert.equal(racedBad.status, "failed");
+  console.log("ok  'couldn't be placed' and status 'incomplete' fail the step with a reason (never redialled); a result already present when counted is still picked up");
+
+  // Scope: a result is only ever read from THIS call's own Fo conversation (each call starts a new one), never from another call's.
+  const asked: string[] = [];
+  const spy: FoApi = { ...fake({ turns: ["a", "b", SUMMARY] }), getFoReply: async (id) => { asked.push(id); return { status: "complete" }; }, getFoConversation: async (id) => { asked.push(id); return { turns: [{ role: "assistant", text: SUMMARY }] }; } };
+  await pollLiveCall(call({ fo_conversation_id: "conv-THIS", status: "waiting_summary", meta: { baseline: 5 } }), 5, spy);
+  assert.ok(asked.length > 0 && asked.every((id) => id === "conv-THIS"), "only this call's conversation is read");
+  assert.equal((await pollLiveCall(call({ fo_conversation_id: undefined }), 5, spy)).status, "working", "no conversation id: nothing is read or attached");
+  console.log("ok  results are read only from this call's own conversation");
+
   // summary straight away
   assert.equal((await pollLiveCall(call(), 5, fake({ reply: { response: SUMMARY }, turns: ["x", SUMMARY] }))).status, "summary");
   // a question instead of calling

@@ -24,6 +24,13 @@ const endsWithJson = (t: string) => /\{[\s\S]*\}\s*(```)?\s*$/.test(t.trim());
 export const looksLikeQuestion = (t: string) =>
   !endsWithJson(t) && (/\?\s*$/.test(t.trim()) || /\b(shall i|should i|do you want me to|say go|just say|confirm the intro|give the word)\b/i.test(t));
 
+/** Fo says the call never happened ("This call couldn't be placed"). Nothing to wait for. */
+export const couldNotPlace = (t: string) => /couldn['’]?t be placed|could not be placed|unable to place (the|this) call|call (was )?not placed/i.test(t);
+/** Fo's JSON says the call was not completed (status "incomplete": cut off, or nothing usable was said). */
+export const isIncomplete = (t: string) => /status["']?\s*:\s*["']?incomplete/i.test(t);
+const INCOMPLETE_WHY = "Fo returned status 'incomplete': the call was cut off or nothing usable was said. It was NOT redialled; use Retry this step if you want another try.";
+const NOT_PLACED_WHY = "Fo said the call could not be placed. It was NOT redialled; use Retry this step if you want another try.";
+
 /** The reference tag put at the end of every brief, so a call whose start we lost can be found again in Fo's history. */
 export const callMarker = (callId: string) => `HG-${callId}`;
 
@@ -106,11 +113,15 @@ export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: F
     const reply = await api.getFoReply(conv, Math.max(1, Math.min(waitSeconds, 10)));
     const turns = await assistantTurns(api, conv);
     const newest = turns.length > baseline ? turns[turns.length - 1].text : "";
-    for (const text of [newest, reply.response ?? ""]) {
-      if (!text) continue;
-      if (looksLikeSummary(text, call.kind)) return { status: "summary", text };
-      if (text === newest) return looksLikeQuestion(text) ? { status: "question", text } : { status: "summary", text };
+    // The last message too, even if it was already there when we counted (Fo can finish between our two reads): each call is its own conversation.
+    const latest = turns.length ? turns[turns.length - 1].text : "";
+    const texts = [newest, reply.response ?? "", latest].filter(Boolean);
+    for (const text of texts) {
+      if (looksLikeSummary(text, call.kind)) return isIncomplete(text) ? { status: "failed", error: INCOMPLETE_WHY } : { status: "summary", text };
     }
+    if (texts.some(couldNotPlace)) return { status: "failed", error: NOT_PLACED_WHY };
+    if (newest) return looksLikeQuestion(newest) ? { status: "question", text: newest } : { status: "summary", text: newest };
+    if (reply.response && looksLikeSummary(reply.response, call.kind)) return { status: "summary", text: reply.response };
     if (now - waitingSince > SUMMARY_WAIT_MS) return { status: "timeout", text: turns.length ? turns[turns.length - 1].text : "" };
     return { status: "working", progress: reply.progress };
   }
@@ -121,7 +132,8 @@ export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: F
   if (r.status === "working") return { status: "working", progress: r.progress };
   if (r.status === "failed") return { status: "failed", error: r.response ?? "Fo reported a failure" };
   const text = r.response ?? "";
-  if (looksLikeSummary(text, call.kind) || (endsWithJson(text) && !looksLikeQuestion(text))) return { status: "summary", text };
+  if (looksLikeSummary(text, call.kind) || (endsWithJson(text) && !looksLikeQuestion(text))) return isIncomplete(text) ? { status: "failed", error: INCOMPLETE_WHY } : { status: "summary", text };
+  if (couldNotPlace(text)) return { status: "failed", error: NOT_PLACED_WHY };
   if (looksLikeQuestion(text)) return { status: "question", text };
   // Fo says it is dialing or on the call. The next new message from Fo will be the summary.
   return { status: "waiting", baseline: (await assistantTurns(api, conv)).length };
