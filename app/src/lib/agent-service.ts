@@ -213,6 +213,7 @@ class DryRunVoice extends DemoVoice {
   // Test hooks for "the start of the call was not confirmed": [mock:ask_timeout] (Fo has it), [mock:ask_timeout_lost] (nothing placed), [mock:ask_timeout_unknown] (cannot tell)
   async begin(job: CallJob): Promise<{ conversationId?: string; progress?: string }> {
     if (/\[mock:ask_timeout/.test(job.request.problem)) throw new Error("Request timed out");
+    checkedBrief(await briefFor(job)); // the rehearsal builds and checks the real script too, so an empty one is caught here
     return { conversationId: `mock-${job.callId}` }; // a pretend Fo conversation (never a real one)
   }
   async recover(call: CallRecord): Promise<Recovery> {
@@ -237,6 +238,16 @@ const offered = (o: Option): OfferedOption => ({
 
 /** Which steps place REAL calls in real mode. The rest stay simulated. */
 export const REAL_STEPS: VoiceProvider["real"] = { provider: true, customer: true, booking: true, reconfirm: true, arrival: true, on_the_way: false };
+
+/** Thrown BEFORE anything is sent to Fo when the call script is empty or incomplete: such a call must never be dialled. */
+export class BriefError extends Error {
+  constructor(message: string) { super(message); this.name = "BriefError"; }
+}
+export function checkedBrief(brief: string): string {
+  const t = brief.trim();
+  if (t.length < 200 || !/\+\d{8,15}/.test(t)) throw new BriefError("Call not placed: the call script was empty or incomplete, so nothing was sent to Fo.");
+  return t;
+}
 
 /** The brief for a call. The address goes into the booking brief only. The arrival code is never in any brief. */
 async function briefFor(job: CallJob): Promise<string> {
@@ -274,7 +285,7 @@ class RealVoice extends DemoVoice {
   readonly real = REAL_STEPS;
   async begin(job: CallJob) {
     // The reference tag lets us find this call in Fo's history if the answer to this request never reaches us.
-    return beginLiveCall(`${await briefFor(job)}\n\n(Internal reference for Hogaya's records. Do not say it on the call: ${callMarker(job.callId ?? "none")})`);
+    return beginLiveCall(`${checkedBrief(await briefFor(job))}\n\n(Internal reference for Hogaya's records. Do not say it on the call: ${callMarker(job.callId ?? "none")})`);
   }
   async recover(call: CallRecord): Promise<Recovery> {
     return recoverLiveCall(call);

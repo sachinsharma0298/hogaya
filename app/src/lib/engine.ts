@@ -146,8 +146,8 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
     return "started";
   } catch (e) {
     // A timeout or a dropped connection does NOT mean no call was placed: Fo may already be phoning. So we never send it again.
-    // Only a clear "not signed in" proves nothing was sent.
-    if (/not signed in|unauthori[sz]ed/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`)) { await failCall(id, callId, kind, e); return "failed"; }
+    // Only a clear "not signed in" or a BriefError (the script was empty, nothing was sent) proves nothing was sent.
+    if ((e as Error)?.name === "BriefError" || /not signed in|unauthori[sz]ed/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`)) { await failCall(id, callId, kind, e); return "failed"; }
     await markUnconfirmed(id, callId, kind, errText(e));
     return "started";
   }
