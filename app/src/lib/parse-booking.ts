@@ -38,7 +38,7 @@ Rules:
 - problem: the problem, cleaned of filler and of the time and place, in the SAME language and script the customer used. Do not translate. null if no home-repair problem is described.
 - preferred_day: the day word as spoken ("kal", "tomorrow", "आज", "parson"), else null. date: that day as YYYY-MM-DD, worked out from today's date, else null.
 - time: the start of the time as HH:MM in 24 hours ("6 baje ke baad" in the evening = 18:00, "shaam" alone has no exact time so null), else null. Assume evening for 1 to 7 and morning for 8 to 11 when no day-part is said. time_window: the customer's words about the time ("after 6 PM", "शाम को"), else null.
-- area: the locality, sector or society ("Sector 62 Noida"), else null. address: only a house, flat or street address that was actually spoken, else null.
+- area: the locality, sector, society or town ("Sector 62 Noida", "Indirapuram Ghaziabad", "Vaishali"): any place name the customer gives, usually at the end, even if it is just a neighbourhood and city. null only if no place is named. address: only a house, flat or street address that was actually spoken, else null.
 - Answer by calling the fill_booking tool, and nothing else.`;
 
 const str = (v: unknown, max = PARSE_MAX_CHARS) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
