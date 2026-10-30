@@ -17,7 +17,13 @@ import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { QuickFill } from "@/components/quick-fill";
+import type { ParsedBooking } from "@/lib/parse-types";
 
+
+// Which quick-filled fields live on which step (they are highlighted briefly when that step is shown).
+const STEP_FIELDS: Record<number, string[]> = { 1: ["category", "problem"], 2: ["sector", "address"], 3: ["time"] };
+const FLASH = "ring-2 ring-primary/60 bg-accent/50";
 
 const TOP: Category[] = ["electrician", "plumber", "ac", "pump", "washing_machine", "ro", "fridge"];
 
@@ -38,6 +44,9 @@ function BookForm({ user }: { user: SessionUser }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [aiFilled, setAiFilled] = useState<string[]>([]); // fields the quick-fill suggested
+  const [flash, setFlash] = useState<string[]>([]); // highlighted for a moment
+  const [qf, setQf] = useState<{ names: string[]; nocat: boolean; past: boolean; timeMissing: boolean } | null>(null);
 
   const suggested = suggestCategory(f.problem);
   const category = picked ?? suggested; // a tapped tile always wins over the suggestion
@@ -51,6 +60,37 @@ function BookForm({ user }: { user: SessionUser }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [sheet]);
+
+  /** Quick-fill only suggests: it fills the fields and highlights them. It never changes the step and never sends. */
+  function applyParsed(p: ParsedBooking) {
+    const filled: string[] = [];
+    const patch: Partial<typeof f> = {};
+    if (p.category) { setPicked(p.category); filled.push("category"); }
+    if (p.problem) { patch.problem = p.problem; filled.push("problem"); }
+    if (p.area) { patch.sector = p.area; filled.push("sector"); }
+    if (p.address) { patch.address = p.address; filled.push("address"); }
+    let past = false;
+    if (p.date && p.time) {
+      const w = customSlot(p.date, p.time);
+      if ("value" in w) { setCustom({ date: p.date, time: p.time }); setSlotId("custom"); filled.push("time"); }
+      else past = w.error === "past";
+    }
+    setF((prev) => ({ ...prev, ...patch }));
+    const timeMissing = !filled.includes("time");
+    const names = [!p.problem && "problem", timeMissing && !past && "time", !p.area && "area", !p.address && "address"].filter(Boolean) as string[];
+    setAiFilled(filled);
+    setQf({ names, nocat: !p.category, past, timeMissing });
+    setFlash(STEP_FIELDS[1].filter((k) => filled.includes(k)));
+  }
+
+  useEffect(() => { // briefly highlight what was quick-filled on the step now shown
+    const here = STEP_FIELDS[step]?.filter((k) => aiFilled.includes(k)) ?? [];
+    if (!here.length) return;
+    setFlash(here);
+    const timer = setTimeout(() => setFlash([]), 2500);
+    return () => clearTimeout(timer);
+  }, [step, aiFilled]);
+  const lit = (k: string) => (flash.includes(k) ? FLASH : "");
 
   const seeIt = (k: string) => () => setSeen((p) => ({ ...p, [k]: true }));
   const slotOk = !("error" in timeWindow());
@@ -154,6 +194,17 @@ function BookForm({ user }: { user: SessionUser }) {
               ))}
             </ul>
 
+            <QuickFill
+              onParsed={applyParsed}
+              note={qf && (
+                <>
+                  {qf.nocat && <p className="mt-1 text-foreground/90">{t("qf.nocat")}</p>}
+                  {qf.names.length > 0 && <p className="mt-1 text-foreground/90">{t("qf.missing", { list: qf.names.map((n) => t(`qf.f.${n}`)).join(", ") })}</p>}
+                  {qf.past && <p className="mt-1 text-foreground/90">{t("qf.past")}</p>}
+                </>
+              )}
+            />
+
             <Label htmlFor="problem" className="mt-4 block text-base font-semibold">{t("f.problem")}</Label>
             <Textarea
               id="problem"
@@ -164,7 +215,7 @@ function BookForm({ user }: { user: SessionUser }) {
               aria-invalid={bad("problem", Boolean(f.problem.trim()))}
               aria-describedby={bad("problem", Boolean(f.problem.trim())) ? "problem-err" : undefined}
               placeholder={t("f.problem.ph")}
-              className="mt-1.5 min-h-[88px] resize-none text-base"
+              className={`mt-1.5 min-h-[88px] resize-none text-base transition ${lit("problem")}`}
             />
             {hint(Boolean(seen.problem || seen.s1), Boolean(f.problem.trim()), t("bk.err.problem"), "problem-err")}
             <p aria-live="polite" className="mt-1.5 min-h-5 text-sm font-medium text-primary">
@@ -182,7 +233,7 @@ function BookForm({ user }: { user: SessionUser }) {
                     key={key}
                     onClick={() => setPicked(key)}
                     aria-pressed={on}
-                    className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl border bg-card px-1 py-1.5 text-center transition ${on ? "border-primary bg-accent ring-2 ring-primary/30" : "hover:border-primary/50"}`}
+                    className={`flex min-h-[88px] flex-col items-center justify-center gap-1 rounded-2xl border bg-card px-1 py-1.5 text-center transition ${on ? "border-primary bg-accent ring-2 ring-primary/30" : "hover:border-primary/50"} ${on ? lit("category") : ""}`}
                   >
                     <Icon className={`size-5 ${on ? "text-primary" : "text-foreground/70"}`} />
                     <span className="text-[11px] font-medium leading-tight">{t(`cat.${key}.short`)}</span>
@@ -209,12 +260,14 @@ function BookForm({ user }: { user: SessionUser }) {
             <h1 ref={headRef} tabIndex={-1} className={h1}>{t("bk.step.location")}</h1>
             <div className="space-y-1.5">
               <Label htmlFor="sector">{t("f.sector")}</Label>
-              <Input id="sector" value={f.sector} onChange={set("sector")} onBlur={seeIt("sector")} aria-invalid={bad("sector", Boolean(f.sector.trim()))} aria-describedby={bad("sector", Boolean(f.sector.trim())) ? "sector-err" : undefined} placeholder={t("f.sector.ph")} className="h-11 text-base" />
+              <Input id="sector" value={f.sector} onChange={set("sector")} onBlur={seeIt("sector")} aria-invalid={bad("sector", Boolean(f.sector.trim()))} aria-describedby={bad("sector", Boolean(f.sector.trim())) ? "sector-err" : undefined} placeholder={t("f.sector.ph")} className={`h-11 text-base transition ${lit("sector")}`} />
+              {qf && !f.sector.trim() && <p className="text-sm font-medium text-primary">{t("qf.need.area")}</p>}
               {hint(Boolean(seen.sector || seen.s2), Boolean(f.sector.trim()), t("bk.err.location"), "sector-err")}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="address">{t("f.address")}</Label>
-              <Input id="address" value={f.address} onChange={set("address")} onBlur={seeIt("address")} aria-invalid={bad("address", Boolean(f.address.trim()))} aria-describedby={bad("address", Boolean(f.address.trim())) ? "address-err" : undefined} placeholder={t("f.address.ph")} autoComplete="street-address" className="h-11 text-base" />
+              <Input id="address" value={f.address} onChange={set("address")} onBlur={seeIt("address")} aria-invalid={bad("address", Boolean(f.address.trim()))} aria-describedby={bad("address", Boolean(f.address.trim())) ? "address-err" : undefined} placeholder={t("f.address.ph")} autoComplete="street-address" className={`h-11 text-base transition ${lit("address")}`} />
+              {qf && !f.address.trim() && <p className="text-sm font-medium text-primary">{t("qf.need.address")}</p>}
               {hint(Boolean(seen.address || seen.s2), Boolean(f.address.trim()), t("bk.err.address"), "address-err")}
             </div>
             <div className="space-y-1.5">
@@ -248,11 +301,12 @@ function BookForm({ user }: { user: SessionUser }) {
                 ))}
               </div>
               {slotId === "custom" && (
-                <div className="grid grid-cols-1 gap-3 pt-1 min-[400px]:grid-cols-2">
+                <div className={`grid grid-cols-1 gap-3 rounded-xl pt-1 transition min-[400px]:grid-cols-2 ${lit("time")}`}>
                   <div className="space-y-1"><Label htmlFor="slot-date" className="text-xs">{t("slot.date")}</Label><Input id="slot-date" type="date" min={todayInput()} value={custom.date} onChange={(e) => setCustom((p) => ({ ...p, date: e.target.value }))} onBlur={seeIt("slot")} className="h-11 text-base" /></div>
                   <div className="space-y-1"><Label htmlFor="slot-time" className="text-xs">{t("slot.time")}</Label><Input id="slot-time" type="time" value={custom.time} onChange={(e) => setCustom((p) => ({ ...p, time: e.target.value }))} onBlur={seeIt("slot")} className="h-11 text-base" /></div>
                 </div>
               )}
+              {qf?.timeMissing && slotId !== "custom" && <p className="mt-1 text-sm font-medium text-primary">{t(qf.past ? "qf.past" : "qf.need.time")}</p>}
               {(() => { const w = timeWindow(); return "error" in w && (seen.slot || seen.s3) ? <p className="mt-1 text-sm font-medium text-destructive">{t(`slot.err.${w.error}`)}</p> : null; })()}
             </div>
           </section>

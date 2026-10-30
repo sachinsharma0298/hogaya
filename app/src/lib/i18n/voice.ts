@@ -1,0 +1,85 @@
+// "Book by voice": the quick-fill box on /book, the dictation hint, the /voice page, the FAQ lines and the landing strip. All three languages.
+// Wispr Flow is a separate app that types what you say. Never claim a partnership or integration with it.
+import type { Lang } from "../translations";
+
+type Dict = Record<string, string>;
+
+const en: Dict = {
+  "qf.title": "Say it once",
+  "qf.label": "Tell us what's wrong, when and where. Hold your Wispr Flow key and speak, or type, in Hindi, Hinglish or English.",
+  "qf.ph": "Bedroom ki light ka switch spark kar raha hai, kal shaam 6 baje ke baad, Sector 62 Noida",
+  "qf.btn": "Fill the form for me",
+  "qf.busy": "Filling your form…",
+  "qf.done": "Done. Please check each step, then press Send. Filled fields are highlighted.",
+  "qf.err": "Sorry, we couldn't read that. Please fill the form below by hand.",
+  "qf.limit": "You've used quick-fill a lot for now. Please fill the form below by hand.",
+  "qf.count": "{n} of 1000 characters",
+  "qf.privacy": "Your text is sent to an AI service only to fill this form. Hogaya never receives your audio.",
+  "qf.link": "How does booking by voice work?",
+  "qf.missing": "We couldn't find: {list}. You can add them in the next steps.",
+  "qf.nocat": "We couldn't tell which service you need. Please pick one below.",
+  "qf.past": "That time has already passed. Please pick a time in step 3.",
+  "qf.f.problem": "what's wrong",
+  "qf.f.day": "the day",
+  "qf.f.time": "the time",
+  "qf.f.area": "the area",
+  "qf.f.address": "the full address",
+  "qf.need.area": "Where should the pro come? Please tell us the area.",
+  "qf.need.address": "Please add the house or flat address.",
+  "qf.need.time": "We didn't catch a time. Please choose one below.",
+  "dict.hint": "🎤 You can speak here with Wispr Flow",
+};
+
+const hing: Dict = {
+  "qf.title": "Ek baar bolein",
+  "qf.label": "Bataiye kya kharab hai, kab aur kahan. Apni Wispr Flow key dabakar boliye, ya type kijiye, Hindi, Hinglish ya English mein.",
+  "qf.ph": "Bedroom ki light ka switch spark kar raha hai, kal shaam 6 baje ke baad, Sector 62 Noida",
+  "qf.btn": "Mera form bhar do",
+  "qf.busy": "Form bhar rahe hain…",
+  "qf.done": "Ho gaya. Har step check kijiye, phir Send dabaiye. Bhare hue fields highlight hain.",
+  "qf.err": "Maaf kijiye, hum samajh nahi paaye. Neeche form haath se bhar dijiye.",
+  "qf.limit": "Aapne quick-fill kaafi use kar liya. Neeche form haath se bhar dijiye.",
+  "qf.count": "1000 mein se {n} akshar",
+  "qf.privacy": "Aapka text sirf form bharne ke liye ek AI service ko jaata hai. Hogaya ko aapki awaaz (audio) kabhi nahi milti.",
+  "qf.link": "Voice se booking kaise hoti hai?",
+  "qf.missing": "Yeh nahi mila: {list}. Aap agle steps mein daal sakte hain.",
+  "qf.nocat": "Hum samajh nahi paaye ki kaunsi service chahiye. Neeche se ek chuniye.",
+  "qf.past": "Yeh time nikal chuka hai. Step 3 mein koi time chuniye.",
+  "qf.f.problem": "kya kharab hai",
+  "qf.f.day": "din",
+  "qf.f.time": "time",
+  "qf.f.area": "area",
+  "qf.f.address": "poora address",
+  "qf.need.area": "Pro ko kahan aana hai? Area bata dijiye.",
+  "qf.need.address": "Ghar ya flat ka address daal dijiye.",
+  "qf.need.time": "Time samajh nahi aaya. Neeche se ek chuniye.",
+  "dict.hint": "🎤 Yahan Wispr Flow se bol sakte hain",
+};
+
+const hi: Dict = {
+  "qf.title": "एक बार बोलिए",
+  "qf.label": "बताइए क्या खराब है, कब और कहाँ। अपनी Wispr Flow कुंजी दबाकर बोलिए, या टाइप कीजिए, हिंदी, हिंग्लिश या अंग्रेज़ी में।",
+  "qf.ph": "Bedroom ki light ka switch spark kar raha hai, kal shaam 6 baje ke baad, Sector 62 Noida",
+  "qf.btn": "मेरा फ़ॉर्म भर दो",
+  "qf.busy": "फ़ॉर्म भर रहे हैं…",
+  "qf.done": "हो गया। हर स्टेप जाँचिए, फिर भेजें दबाइए। भरे हुए खाने रंगीन किनारे से दिखेंगे।",
+  "qf.err": "माफ़ कीजिए, हम समझ नहीं पाए। नीचे फ़ॉर्म हाथ से भर दीजिए।",
+  "qf.limit": "आपने क्विक-फ़िल काफ़ी इस्तेमाल कर लिया। नीचे फ़ॉर्म हाथ से भर दीजिए।",
+  "qf.count": "1000 में से {n} अक्षर",
+  "qf.privacy": "आपका टेक्स्ट सिर्फ़ फ़ॉर्म भरने के लिए एक AI सेवा को भेजा जाता है। Hogaya को आपकी आवाज़ (ऑडियो) कभी नहीं मिलती।",
+  "qf.link": "आवाज़ से बुकिंग कैसे होती है?",
+  "qf.missing": "यह नहीं मिला: {list}। आप अगले स्टेप में जोड़ सकते हैं।",
+  "qf.nocat": "हम समझ नहीं पाए कि कौन-सी सेवा चाहिए। नीचे से एक चुनिए।",
+  "qf.past": "यह समय निकल चुका है। स्टेप 3 में कोई समय चुनिए।",
+  "qf.f.problem": "क्या खराब है",
+  "qf.f.day": "दिन",
+  "qf.f.time": "समय",
+  "qf.f.area": "इलाका",
+  "qf.f.address": "पूरा पता",
+  "qf.need.area": "कारीगर को कहाँ आना है? इलाका बता दीजिए।",
+  "qf.need.address": "घर या फ़्लैट का पता जोड़ दीजिए।",
+  "qf.need.time": "समय समझ नहीं आया। नीचे से एक चुनिए।",
+  "dict.hint": "🎤 यहाँ Wispr Flow से बोल सकते हैं",
+};
+
+export const VOICE: Record<Lang, Dict> = { en, hing, hi };
