@@ -17,6 +17,7 @@ import { PhoneField } from "@/components/phone-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationHint, useFieldLang } from "@/components/dictation-hint";
 import { QuickFill } from "@/components/quick-fill";
 import type { ParsedBooking } from "@/lib/parse-types";
 
@@ -48,6 +49,8 @@ function BookForm({ user }: { user: SessionUser }) {
   const [flash, setFlash] = useState<string[]>([]); // highlighted for a moment
   const [qf, setQf] = useState<{ names: string[]; nocat: boolean; past: boolean; timeMissing: boolean } | null>(null);
 
+  const problemLang = useFieldLang(f.problem);
+  const addressLang = useFieldLang(f.address);
   const suggested = suggestCategory(f.problem);
   const category = picked ?? suggested; // a tapped tile always wins over the suggestion
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -127,7 +130,8 @@ function BookForm({ user }: { user: SessionUser }) {
     try {
       const { landmark, ...rest } = f;
       // The landmark rides along inside the address, so it follows the same privacy rule (shared only on the booking call, after the customer confirms).
-      const address = landmark.trim() ? `${f.address.trim()} (landmark: ${landmark.trim()})` : f.address.trim();
+      const oneLine = f.address.replace(/\s*\n+\s*/g, ", ").trim();
+      const address = landmark.trim() ? `${oneLine} (landmark: ${landmark.trim()})` : oneLine;
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -208,6 +212,7 @@ function BookForm({ user }: { user: SessionUser }) {
             <Label htmlFor="problem" className="mt-4 block text-base font-semibold">{t("f.problem")}</Label>
             <Textarea
               id="problem"
+              lang={problemLang}
               rows={3}
               value={f.problem}
               onChange={set("problem")}
@@ -217,6 +222,7 @@ function BookForm({ user }: { user: SessionUser }) {
               placeholder={t("f.problem.ph")}
               className={`mt-1.5 min-h-[88px] resize-none text-base transition ${lit("problem")}`}
             />
+            <DictationHint />
             {hint(Boolean(seen.problem || seen.s1), Boolean(f.problem.trim()), t("bk.err.problem"), "problem-err")}
             <p aria-live="polite" className="mt-1.5 min-h-5 text-sm font-medium text-primary">
               {category && f.problem.trim() && t("s1.suggest", { cat: t(`cat.${category}`) })}
@@ -266,7 +272,8 @@ function BookForm({ user }: { user: SessionUser }) {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="address">{t("f.address")}</Label>
-              <Input id="address" value={f.address} onChange={set("address")} onBlur={seeIt("address")} aria-invalid={bad("address", Boolean(f.address.trim()))} aria-describedby={bad("address", Boolean(f.address.trim())) ? "address-err" : undefined} placeholder={t("f.address.ph")} autoComplete="street-address" className={`h-11 text-base transition ${lit("address")}`} />
+              <Textarea id="address" lang={addressLang} rows={2} value={f.address} onChange={set("address")} onBlur={seeIt("address")} aria-invalid={bad("address", Boolean(f.address.trim()))} aria-describedby={bad("address", Boolean(f.address.trim())) ? "address-err" : undefined} placeholder={t("f.address.ph")} autoComplete="street-address" className={`min-h-[72px] resize-none text-base transition ${lit("address")}`} />
+              <DictationHint />
               {qf && !f.address.trim() && <p className="text-sm font-medium text-primary">{t("qf.need.address")}</p>}
               {hint(Boolean(seen.address || seen.s2), Boolean(f.address.trim()), t("bk.err.address"), "address-err")}
             </div>
