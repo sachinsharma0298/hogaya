@@ -69,6 +69,16 @@ const en: Dict = {
   "help.c9.d": "Hold your Wispr Flow key and describe the problem, time and area in Hindi, Hinglish or English. Hogaya fills the form and you review it before sending.",
   "legal.privacy.s7.t": "Voice quick-fill",
   "legal.privacy.s7.d": "Text you put in the quick-fill box is sent to an AI service only to fill your booking form. Hogaya never receives your audio.",
+  // landing strip
+  "lp.speak.title": "Speak it. हो गया.",
+  "lp.speak.s1.t": "Speak",
+  "lp.speak.s1.d": "Hold your Wispr Flow key and say what's wrong, in Hindi, Hinglish or English.",
+  "lp.speak.s2.t": "Our AI calls the pro",
+  "lp.speak.s2.d": "Hogaya's AI phones local pros and confirms time and price.",
+  "lp.speak.s3.t": "Booked",
+  "lp.speak.s3.d": "Confirmed with both sides, with a service code at the door.",
+  "lp.speak.works": "Works great with Wispr Flow",
+  "lp.speak.steps": "Speak, our AI calls the pro, booked",
 };
 
 const hing: Dict = {
@@ -136,6 +146,16 @@ const hing: Dict = {
   "help.c9.d": "Wispr Flow key dabakar problem, time aur area Hindi, Hinglish ya English mein bataiye. Hogaya form bhar deti hai aur bhejne se pehle aap use check karte hain.",
   "legal.privacy.s7.t": "Voice quick-fill",
   "legal.privacy.s7.d": "Quick-fill box mein jo text aap daalte hain woh sirf booking form bharne ke liye ek AI service ko jaata hai. Hogaya ko aapki awaaz (audio) kabhi nahi milti.",
+  // landing strip
+  "lp.speak.title": "Bolo. हो गया.",
+  "lp.speak.s1.t": "Boliye",
+  "lp.speak.s1.d": "Wispr Flow key dabakar boliye ki kya kharab hai, Hindi, Hinglish ya English mein.",
+  "lp.speak.s2.t": "Hamari AI pro ko call karti hai",
+  "lp.speak.s2.d": "Hogaya ki AI local pros ko phone karke time aur price confirm karti hai.",
+  "lp.speak.s3.t": "Booked",
+  "lp.speak.s3.d": "Dono taraf se confirm, aur darwaze par service code.",
+  "lp.speak.works": "Wispr Flow ke saath badhiya chalta hai",
+  "lp.speak.steps": "Boliye, hamari AI pro ko call karti hai, booked",
 };
 
 const hi: Dict = {
@@ -203,6 +223,16 @@ const hi: Dict = {
   "help.c9.d": "Wispr Flow कुंजी दबाकर समस्या, समय और इलाका हिंदी, हिंग्लिश या अंग्रेज़ी में बताइए। Hogaya फ़ॉर्म भर देती है और भेजने से पहले आप उसे जाँचते हैं।",
   "legal.privacy.s7.t": "आवाज़ से क्विक-फ़िल",
   "legal.privacy.s7.d": "क्विक-फ़िल बॉक्स में आप जो टेक्स्ट डालते हैं वह सिर्फ़ बुकिंग फ़ॉर्म भरने के लिए एक AI सेवा को भेजा जाता है। Hogaya को आपकी आवाज़ (ऑडियो) कभी नहीं मिलती।",
+  // landing strip
+  "lp.speak.title": "बोलिए। हो गया।",
+  "lp.speak.s1.t": "बोलिए",
+  "lp.speak.s1.d": "Wispr Flow कुंजी दबाकर बताइए क्या खराब है, हिंदी, हिंग्लिश या अंग्रेज़ी में।",
+  "lp.speak.s2.t": "हमारी AI कारीगर को कॉल करती है",
+  "lp.speak.s2.d": "Hogaya की AI आसपास के कारीगरों को फ़ोन करके समय और क़ीमत पक्की करती है।",
+  "lp.speak.s3.t": "बुक हो गया",
+  "lp.speak.s3.d": "दोनों तरफ़ से पक्का, और दरवाज़े पर सर्विस कोड।",
+  "lp.speak.works": "Wispr Flow के साथ बढ़िया चलता है",
+  "lp.speak.steps": "बोलिए, हमारी AI कारीगर को कॉल करती है, बुक हो गया",
 };
 
 export const VOICE: Record<Lang, Dict> = { en, hing, hi };

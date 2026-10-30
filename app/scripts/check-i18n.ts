@@ -19,11 +19,11 @@ walk(path.join(process.cwd(), "src"));
 const unknown = [...used].filter((k) => !(k in DICTS.en));
 if (unknown.length) say(`USED in code but not defined (${unknown.length}): ${unknown.join(", ")}`);
 
-const SAMPLE = /^voice\.s\d$/;
+const SAMPLE = /^(voice\.s\d|lp\.speak\.title)$/;
 // stray Hindi / Hinglish in English
 const HING = /\b(kaam|pakka|hogaya ki|aap|aapka|aapki|karein|kijiye|hai|hain|namaste|shukriya|dobara|bhejein|chuniye|banayein|nahi|abhi|kya|mein)\b/i;
 for (const [k, v] of Object.entries(DICTS.en)) {
-  if (SAMPLE.test(k)) continue; // the voice sample sentences are example input in each language
+  if (SAMPLE.test(k)) continue; // voice sample sentences are example input; the landing title keeps the brand word
   if (/[ऀ-ॿ]/.test(v)) say(`DEVANAGARI in en: ${k}`);
   else if (HING.test(v) && !/^(brand\.name|qf\.ph)$/.test(k)) say(`HINGLISH? in en: ${k} = ${v}`);
 }

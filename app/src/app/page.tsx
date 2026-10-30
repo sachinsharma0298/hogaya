@@ -14,6 +14,7 @@ import { KnowledgeBase } from "@/components/landing/KnowledgeBase";
 import { PricingBlock } from "@/components/landing/PricingBlock";
 import { ProsSection } from "@/components/landing/ProsSection";
 import { Reveal } from "@/components/landing/Reveal";
+import { SpeakItSection } from "@/components/landing/SpeakItSection";
 import { SiteFooter } from "@/components/landing/SiteFooter";
 import { SiteHeader } from "@/components/landing/SiteHeader";
 import { TrustSection } from "@/components/landing/TrustSection";
@@ -73,6 +74,7 @@ export default function Landing() {
           <Reveal><h2 id="faq-h" className="mb-5 text-3xl font-bold tracking-tight md:text-4xl">{t("faq.title")}</h2></Reveal>
           <Faq />
         </section>
+        <SpeakItSection />
       </main>
       <SiteFooter />
     </div>
