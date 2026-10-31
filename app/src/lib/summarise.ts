@@ -64,14 +64,39 @@ const STATUS = ["confirmed", "declined", "no_reply", "unclear"];
 const strOrNull = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 const boolOrNull = (v: unknown) => (typeof v === "boolean" ? v : null);
 
+/** Fo's own JSON from the end of a summary: the last {...} block. Tolerates unquoted keys, single quotes, code fences and Hindi text around/inside it. */
+export function parseFoJson(text: string): Record<string, unknown> | null {
+  const end = text.lastIndexOf("}");
+  for (let start = text.lastIndexOf("{", end); start >= 0 && end > start; start = text.lastIndexOf("{", start - 1)) {
+    const block = text.slice(start, end + 1);
+    const tries = [block, block.replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g, '$1"$2":').replace(/'([^']*)'/g, '"$1"')];
+    for (const t of tries) {
+      try { const v = JSON.parse(t); if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>; } catch { /* try the next form */ }
+    }
+  }
+  return null;
+}
+
+/** The customer call result straight from Fo's JSON (no Claude needed). Names match case-insensitively, ignoring spaces at the ends and extra words. */
+export function customerFromFoJson(text: string, offeredNames: string[]): CustomerCallJson | null {
+  const raw = parseFoJson(text);
+  if (!raw || (typeof raw.confirmed !== "boolean" && raw.confirmed !== null)) return null;
+  const want = typeof raw.preferred_option === "string" ? raw.preferred_option.trim().toLowerCase() : "";
+  const chosen = want ? offeredNames.find((n) => { const full = n.trim().toLowerCase(); return full === want || full.split(/\s+/)[0] === want.split(/\s+/)[0] || full.includes(want) || want.includes(full); }) : undefined;
+  return { confirmed: raw.confirmed as boolean | null, preferred_option: chosen ?? null, notes: typeof raw.notes === "string" ? raw.notes : "" };
+}
+
 /** Final safety net: whatever Claude returns, only allowed values get through. */
 export function sanitize(raw: Record<string, unknown>): ProviderCallJson {
+  // Fo's status "partial" (hung up early) with the key answers in hand is a usable answer: can do + one specific time + a visit charge.
+  const usable = raw.answered !== false && raw.can_do === true && strOrNull(raw.slot) !== null && strOrNull(raw.visit_charge) !== null;
+  const status = STATUS.includes(raw.status as string) ? (raw.status as ProviderCallJson["status"]) : "unclear";
   return {
     answered: raw.answered === true,
     can_do: boolOrNull(raw.can_do),
     slot: strOrNull(raw.slot),
     slot_raw: strOrNull(raw.slot_raw),
-    slot_exact: raw.slot_exact === true && strOrNull(raw.slot) !== null,
+    slot_exact: strOrNull(raw.slot) !== null && (raw.slot_exact === true || (raw.slot_exact === undefined && /^\d{1,2}(:\d{2})?\s?(AM|PM)$/i.test(strOrNull(raw.slot) ?? ""))),
     price_quote: strOrNull(raw.price_quote),
     price_type: PRICE.includes(raw.price_type as string) ? (raw.price_type as ProviderCallJson["price_type"]) : "unknown",
     provider_name: strOrNull(raw.provider_name),
@@ -82,7 +107,7 @@ export function sanitize(raw: Record<string, unknown>): ProviderCallJson {
     callback_requested: raw.callback_requested === true,
     notes: typeof raw.notes === "string" ? raw.notes : "",
     opt_out: raw.opt_out === true,
-    status: STATUS.includes(raw.status as string) ? (raw.status as ProviderCallJson["status"]) : "unclear",
+    status: usable && (status === "unclear" || raw.status === "partial") ? "confirmed" : status,
   };
 }
 
@@ -97,7 +122,10 @@ export async function summaryToJson(summaryText: string, ctx: SummaryContext = {
   const context = ctx.timeWindow
     ? `Customer's requested time window: ${ctx.timeWindow}.${ctx.requestedAt ? ` The request was made at ${ist(ctx.requestedAt)} (India time).` : ""}\n\n`
     : "";
-  const res = await new Anthropic().messages.create({
+  const direct = parseFoJson(summaryText);
+  let res;
+  try {
+  res = await new Anthropic().messages.create({
     model: MODEL,
     max_tokens: 800,
     system: SYSTEM,
@@ -105,8 +133,15 @@ export async function summaryToJson(summaryText: string, ctx: SummaryContext = {
     tool_choice: { type: "auto" }, // this model does not accept a forced tool, so the system prompt says to call it
     messages: [{ role: "user", content: `${context}Fo's call summary:\n\n${summaryText}` }],
   });
+  } catch (e) {
+    if (direct && "status" in direct) return sanitize(direct); // Claude is down: Fo's own JSON still carries the answer
+    throw e;
+  }
   const use = res.content.find((c) => c.type === "tool_use");
-  if (!use || use.type !== "tool_use") throw new Error("Claude did not return structured data");
+  if (!use || use.type !== "tool_use") {
+    if (direct && "status" in direct) return sanitize(direct);
+    throw new Error("Claude did not return structured data");
+  }
   return sanitize(use.input as Record<string, unknown>);
 }
 
@@ -128,6 +163,8 @@ async function extract(system: string, tool: Anthropic.Tool, userText: string): 
 }
 
 export async function customerSummaryToJson(summaryText: string, offeredNames: string[]): Promise<CustomerCallJson> {
+  const direct = customerFromFoJson(summaryText, offeredNames); // Fo's own JSON is exact: no need to ask Claude to re-read it
+  if (direct && (direct.confirmed === false || (direct.confirmed === true && direct.preferred_option))) return direct;
   const raw = await extract(
     `You turn an AI phone assistant's call summary into data for Hogaya. Fo called the CUSTOMER and offered one or two providers. Record only what the customer said.
 - confirmed: true only if the customer clearly agreed to an option; false if they declined every option offered; null if unclear or no answer.

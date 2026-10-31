@@ -29,7 +29,6 @@ export const couldNotPlace = (t: string) => /couldn['’]?t be placed|could not 
 /** Fo's JSON says the call was not completed (status "incomplete": cut off, or nothing usable was said). */
 export const isIncomplete = (t: string) => /status["']?\s*:\s*["']?incomplete/i.test(t);
 const INCOMPLETE_WHY = "Fo returned status 'incomplete': the call was cut off or nothing usable was said. It was NOT redialled; use Retry this step if you want another try.";
-const NOT_PLACED_WHY = "Fo said the call could not be placed. It was NOT redialled; use Retry this step if you want another try.";
 
 /** The reference tag put at the end of every brief, so a call whose start we lost can be found again in Fo's history. */
 export const callMarker = (callId: string) => `HG-${callId}`;
@@ -119,8 +118,8 @@ export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: F
     for (const text of texts) {
       if (looksLikeSummary(text, call.kind)) return isIncomplete(text) ? { status: "failed", error: INCOMPLETE_WHY } : { status: "summary", text };
     }
-    if (texts.some(couldNotPlace)) return { status: "failed", error: NOT_PLACED_WHY };
-    if (newest) return looksLikeQuestion(newest) ? { status: "question", text: newest } : { status: "summary", text: newest };
+    // "couldn't be placed" is NOT final: Fo redials inside the same conversation. Keep reading it until a real result or the timeout.
+    if (newest && !couldNotPlace(newest)) return looksLikeQuestion(newest) ? { status: "question", text: newest } : { status: "summary", text: newest };
     if (reply.response && looksLikeSummary(reply.response, call.kind)) return { status: "summary", text: reply.response };
     if (now - waitingSince > SUMMARY_WAIT_MS) return { status: "timeout", text: turns.length ? turns[turns.length - 1].text : "" };
     return { status: "working", progress: reply.progress };
@@ -133,8 +132,8 @@ export async function pollLiveCall(call: CallRecord, waitSeconds: number, api: F
   if (r.status === "failed") return { status: "failed", error: r.response ?? "Fo reported a failure" };
   const text = r.response ?? "";
   if (looksLikeSummary(text, call.kind) || (endsWithJson(text) && !looksLikeQuestion(text))) return isIncomplete(text) ? { status: "failed", error: INCOMPLETE_WHY } : { status: "summary", text };
-  if (couldNotPlace(text)) return { status: "failed", error: NOT_PLACED_WHY };
-  if (looksLikeQuestion(text)) return { status: "question", text };
+  // "couldn't be placed" is Fo's first try failing; it redials in the same conversation, so follow it like any dialing call.
+  if (!couldNotPlace(text) && looksLikeQuestion(text)) return { status: "question", text };
   // Fo says it is dialing or on the call. The next new message from Fo will be the summary.
   return { status: "waiting", baseline: (await assistantTurns(api, conv)).length };
 }

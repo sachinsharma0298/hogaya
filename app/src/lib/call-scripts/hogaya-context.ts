@@ -28,12 +28,13 @@ const RULES = [
   "- Never promise payments, discounts or guarantees beyond what is in this brief.",
   "- Speak warmly and politely, at a calm pace. Your voice is female.",
   "- This is the only task: make this one call. Do not send email or text, create calendar entries, buy anything, or contact anyone except the number above.",
+  "- Make one call only. Never redial. If the person hangs up, return the answers you have with status partial.",
   "- End politely once the task is done.",
 ];
 
 const NO_MIX = "Never mix the two languages inside one sentence, except common words people really use in spoken Hindi: booking, service code, app, visit charge, AC, fan, OK.";
-const SWITCH_EN = "If the person speaks Hindi at any point (for example \"kaise ho\", \"haan\", \"Hindi mein bolo\") or asks you to switch, switch to Hindi immediately and stay in Hindi for the rest of the call. Do not switch back unless they ask.";
-const SWITCH_HI = "If the person speaks English at any point or asks you to switch (for example \"English please\"), switch to English immediately and stay in English for the rest of the call. Do not switch back unless they ask.";
+const SWITCH_EN = "LANGUAGE FOLLOWS THE PERSON: if the person answers or speaks in Hindi or Hinglish at any point (for example \"haan\", \"bolo\", \"kaun\", \"kaise ho\", \"Hindi mein bolo\") or asks you to switch, switch to Hindi on your very next sentence and continue in Hindi for the rest of the call, including the time read-back and the closing. Do not go back to English unless they ask.";
+const SWITCH_HI = "LANGUAGE FOLLOWS THE PERSON: if the person speaks English at any point or asks you to switch (for example \"English please\"), switch to English immediately and stay in English for the rest of the call. Do not switch back unless they ask.";
 const HINDI_STYLE = "Hindi means simple, everyday spoken Hindi in Devanagari (not formal or textbook Hindi). Use feminine forms for yourself. Keep the time words: सवा, साढ़े, पौने, डेढ़, ढाई. In Hindi say ग्राहक (not customer), कारीगर (not pro), इलेक्ट्रीशियन, पंखा, and translate the problem into Hindi: do not leave English words in a Hindi sentence.";
 
 /** The LANGUAGE block. `fallback` is only used when a person who is asked gives no clear answer. */

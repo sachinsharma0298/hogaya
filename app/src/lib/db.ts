@@ -22,19 +22,37 @@ const MIGRATIONS_DIR = path.join(process.cwd(), "supabase", "migrations");
 // In dev the module can be reloaded: keep one connection per process.
 const g = globalThis as unknown as { __hogayaDb?: Promise<Db> };
 
+/** True for "could not get a connection" errors (pool full, connect timeout): nothing ran yet, so trying again is safe. */
+export const isConnectionBusy = (e: unknown) => {
+  const x = e as { code?: string; message?: string } | undefined;
+  return /EMAXCONN|CONNECT_TIMEOUT|ECONNREFUSED|ETIMEDOUT/i.test(String(x?.code ?? "")) || /max clients reached|too many clients|EMAXCONN|CONNECT_TIMEOUT/i.test(String(x?.message ?? ""));
+};
+async function whenConnected<T>(fn: () => Promise<T>): Promise<T> {
+  for (let i = 0; ; i++) {
+    try { return await fn(); } catch (e) {
+      if (i >= 4 || !isConnectionBusy(e)) throw e;
+      await new Promise((r) => setTimeout(r, 300 * 2 ** i + Math.random() * 200)); // 0.3s, 0.6s, 1.2s, 2.4s
+    }
+  }
+}
+
 async function openPostgres(url: string): Promise<Db> {
   const { default: postgres } = await import("postgres");
-  // Use Supabase's SESSION pooler (port 5432). Its TRANSACTION pooler (port 6543) hangs when several of our multi-step
-  // transactions run at once ("there is already a transaction in progress"). Keep the pool tiny: each connection is a real one.
-  const sql = postgres(url, { max: 2, prepare: false, idle_timeout: 10, connect_timeout: 15 });
+  // Serverless: every running instance holds its own connections, and Supabase's pooler has a small fixed number (15 in session mode).
+  // So each instance keeps ONE connection (transactions queue behind each other) and lets it go quickly when idle.
+  // prepare:false is required by Supabase's transaction pooler (port 6543) and harmless on the session pooler.
+  const sql = postgres(url, { max: 1, prepare: false, idle_timeout: 5, connect_timeout: 15 });
   const wrap = (s: { unsafe: (t: string, p?: never[]) => Promise<unknown> }): Queryable => ({
     query: async <T,>(text: string, params: unknown[] = []) => (await s.unsafe(text, params as never[])) as T[],
     exec: async (text: string) => { await s.unsafe(text); },
   });
+  const top = wrap(sql as never);
   return {
     engine: "postgres",
-    ...wrap(sql as never),
-    tx: (fn) => sql.begin((t) => fn(wrap(t as never))) as never,
+    query: <T,>(text: string, params: unknown[] = []) => whenConnected(() => top.query<T>(text, params)),
+    exec: (text: string) => whenConnected(() => top.exec(text)),
+    // Only the connection step is retried: if the pool was full, no statement of this transaction has run.
+    tx: (fn) => whenConnected(() => sql.begin((t) => fn(wrap(t as never))) as never),
   };
 }
 

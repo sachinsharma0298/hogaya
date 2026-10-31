@@ -33,10 +33,10 @@ function title0(c: CallRecord): string {
 /** A short, friendly result for a finished call. */
 function result(c: CallRecord): { text: string; tone: "ok" | "bad" | "wait" | "neutral" } {
   if (c.status === "calling") return { text: "Calling…", tone: "wait" };
-  if (c.status === "waiting_summary") return { text: "Waiting for Fo's call summary…", tone: "wait" };
+  if (c.status === "waiting_summary") return { text: "On the call, or Fo is redialling: waiting for Fo's final result…", tone: "wait" };
   if (c.status === "needs_reply") return { text: "Fo is asking you something", tone: "bad" };
   if (c.status === "unconfirmed") return { text: "Call may be in progress (start not confirmed)", tone: "bad" };
-  if (c.status === "failed") return { text: "Failed", tone: "bad" };
+  if (c.status === "failed") return { text: c.progress ? `Failed: ${c.progress.slice(0, 80)}` : "Failed", tone: "bad" };
   if (c.status === "timed_out") return { text: "No summary yet", tone: "bad" };
   if (c.status === "needs_review") return { text: "Claude could not read it: read Fo's summary", tone: "bad" };
   const j = (c.json ?? {}) as Record<string, unknown>;

@@ -17,6 +17,7 @@ import {
   applyArrival, applyBooking, applyConfirmation, applyCustomer, applyProvider, applyReconfirm, confirmedOptions, hasCallInFlight, optionFor,
 } from "./live-actions";
 import { recommendationReason } from "./recommend";
+import { isConnectionBusy } from "./db";
 import { attemptCount, END_STATES, isHold, maxAttempts } from "./state";
 import {
   getProviders, getRequest, getSettings, listTickIds, lockRequest, patchCall, simulatedProviders, unlockRequest, updateRequest,
@@ -37,10 +38,17 @@ const enT = (key: string, vars?: Record<string, string | number>) => {
   return s;
 };
 /** A second attempt waits a minute for live calls, almost nothing for simulated ones. */
+/** Automatic tries per person per step: a live call is made ONCE (only the operator's Retry makes another); simulated ones may repeat. */
+/** Set when Fo's history proves the call never started: that attempt does not use up the one automatic try. */
+export const NEVER_PLACED = "Fo's history shows no call was placed";
+const autoMax = (r: { demo: boolean }) => (r.demo ? maxAttempts(r) : 1);
+const autoCount = (r: HogayaRequest, spec: Parameters<typeof attemptCount>[1]) =>
+  r.calls.filter((c) => c.progress !== NEVER_PLACED).length === r.calls.length ? attemptCount(r, spec) : attemptCount({ ...r, calls: r.calls.filter((c) => c.progress !== NEVER_PLACED) }, spec);
 const retryDelayMs = (live: boolean) => (live ? 60_000 : 1_500);
 
 type StartKind = CallKind;
 const LABEL: Record<StartKind, string> = { provider: "Call", customer: "Customer call", booking: "Booking call", reconfirm: "Reminder and reconfirm", arrival: "Arrival check", on_the_way: "Final confirmation call" };
+class DbSaveError extends Error {}
 const isUniqueViolation = (e: unknown) => /one_live_call_at_a_time|duplicate key|unique/i.test(e instanceof Error ? e.message : String(e));
 
 // ---- building a call --------------------------------------------------------------------------------------
@@ -142,7 +150,13 @@ export async function startCall(id: string, kind: StartKind, providerId?: string
 
   try {
     const out = await agentForCall(r, { demo: !live }).begin(job);
-    await patchCall(id, callId, { fo_conversation_id: out.conversationId, progress: out.progress });
+    // Fo HAS the request now. A database hiccup while saving its conversation id is retried, never treated as a failed call.
+    for (let i = 0; ; i++) {
+      try { await patchCall(id, callId, { fo_conversation_id: out.conversationId, progress: out.progress }); break; } catch (e) {
+        if (i >= 5) throw new DbSaveError(errText(e));
+        await sleep(1500 * (i + 1));
+      }
+    }
     return "started";
   } catch (e) {
     // A timeout or a dropped connection does NOT mean no call was placed: Fo may already be phoning. So we never send it again.
@@ -272,7 +286,7 @@ async function pollCall(r: HogayaRequest, c: CallRecord, deadline: number): Prom
       return true;
     }
     if (rec.status === "lost") {
-      await patchCall(id, c.id, { status: "failed", progress: "Fo's history shows no call was placed" });
+      await patchCall(id, c.id, { status: "failed", progress: NEVER_PLACED });
       await log(id, `${LABEL[kind]}: Fo's history shows no call was placed, so it is safe to try again.`);
       await resolveFlagsMatching(id, /may already be happening/);
       return true;
@@ -293,6 +307,8 @@ async function pollCall(r: HogayaRequest, c: CallRecord, deadline: number): Prom
   try {
     p = await agent.poll(job, c, waitSeconds);
   } catch (e) {
+    // A busy or unreachable database says nothing about the call: Fo keeps going. Look again on the next tick; never fail or redial.
+    if (isConnectionBusy(e)) { await log(id, `Database busy while following the call (${errText(e)}); will look again`).catch(() => {}); return false; }
     await failCall(id, c.id, kind, e);
     return true;
   }
@@ -354,6 +370,7 @@ async function planProviders(r: HogayaRequest, auto: boolean): Promise<Action | 
     for (const pid of r.matched.filter((m) => !(r.skipped ?? []).includes(m))) {
       const calls = r.calls.filter((c) => c.kind === "provider" && c.provider_id === pid);
       if (calls.some((c) => c.status === "done" && ["confirmed", "declined"].includes((c.json as ProviderCallJson | undefined)?.status ?? ""))) continue;
+      if (calls.filter((c) => c.progress !== NEVER_PLACED).length >= autoMax(r)) continue;
       if (calls.length >= maxAttempts(r)) continue;
       if (calls.length > 0 && !auto) continue; // manual mode: the operator decides whether to call again
       const last = calls[calls.length - 1];
@@ -384,13 +401,13 @@ async function plan(r: HogayaRequest): Promise<Action | null> {
   if (!auto) return null; // live without Autopilot: the operator's buttons start the next call
   const b = r.booking;
   const act = (kind: StartKind, providerId?: string): Action => async () => (await startCall(id, kind, providerId)) !== "line" ;
-  const book = (providerId: string): Action | null => (attemptCount(r, { kind: "booking", providerId }) < maxAttempts(r) ? act("booking", providerId) : null);
+  const book = (providerId: string): Action | null => (autoCount(r, { kind: "booking", providerId }) < autoMax(r) ? act("booking", providerId) : null);
   if (b && b.provider_confirmed === false) return book(b.provider_id); // a backup Pro needs its own booking call
   switch (r.state) {
     case "options_ready": {
       if (r.customer_choice) return book(r.customer_choice.provider_id);
       if (r.customer_declined) return null;
-      return attemptCount(r, { kind: "customer" }) < maxAttempts(r) ? act("customer") : null;
+      return autoCount(r, { kind: "customer" }) < autoMax(r) ? act("customer") : null;
     }
     case "customer_chose":
     case "booking_provider":
@@ -404,7 +421,7 @@ async function plan(r: HogayaRequest): Promise<Action | null> {
     }
     case "reconfirm_due": {
       if (!b || b.reconfirmed_at) return null;
-      return attemptCount(r, { kind: "reconfirm", providerId: b.provider_id }) < maxAttempts(r) ? act("reconfirm") : null;
+      return autoCount(r, { kind: "reconfirm", providerId: b.provider_id }) < autoMax(r) ? act("reconfirm") : null;
     }
     default:
       return null;

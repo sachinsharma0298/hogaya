@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/guard";
 import { randomInt } from "node:crypto";
 import { clearFlags, pauseBooking, resolveFlagsMatching, resumeBooking, transition } from "@/lib/booking";
-import { retryStep } from "@/lib/engine";
+import { NEVER_PLACED, retryStep } from "@/lib/engine";
 import { kick } from "@/lib/kick";
 import { END_STATES } from "@/lib/state";
 import { getRequest, updateRequest } from "@/lib/store";
@@ -76,7 +76,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const stuck = r.calls.filter((c) => c.status === "unconfirmed");
       if (stuck.length === 0) return fail("No call is waiting to be confirmed.");
       await updateRequest(id, (x) => {
-        for (const c of x.calls) if (c.status === "unconfirmed") { c.status = "failed"; c.progress = "Operator checked Fo: no call was placed"; c.ended_at = now(); }
+        for (const c of x.calls) if (c.status === "unconfirmed") { c.status = "failed"; c.progress = NEVER_PLACED; c.ended_at = now(); }
         x.events.push({ at: now(), text: "Operator checked Fo's history: no call was placed. This attempt may be tried again." });
       });
       await resolveFlagsMatching(id, /may already be happening|cannot tell whether/);

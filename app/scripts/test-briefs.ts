@@ -27,13 +27,15 @@ for (const [langName, lang] of LANGS) {
   };
   for (const [kind, text] of Object.entries(briefs)) {
     assert.ok(text.includes("Hogaya"), `${langName}/${kind}: missing Hogaya`);
+    assert.ok(text.includes("Make one call only. Never redial. If the person hangs up, return the answers you have with status partial."), `${langName}/${kind}: no one-call-only rule`);
     if (lang !== "hindi") assert.ok(text.includes("Hogaya's AI assistant"), `${langName}/${kind}: not Hogaya's AI assistant`);
     if (lang !== "english") assert.ok(text.includes("Hogaya की AI असिस्टेंट"), `${langName}/${kind}: no Hindi opening`);
     // the Hindi brief says its lines in Devanagari; the unknown brief asks first, in both languages
     if (lang === "hindi") assert.ok(/[\u0900-\u097F]{10}/.test(text.split("OPENING LINE")[1]), `${langName}/${kind}: opening not in Devanagari`);
     assert.equal(text.includes("Aap Hindi mein baat karna chahenge ya English mein? Would you prefer Hindi or English?"), lang === undefined, `${langName}/${kind}: language question`);
     assert.ok(text.includes("never mix") || text.includes("Never mix"), `${langName}/${kind}: no-mixing rule`);
-    assert.ok(/switch to (Hindi|English) immediately/.test(text), `${langName}/${kind}: no switching rule`);
+    assert.ok(/switch to (Hindi on your very next sentence|English immediately)/.test(text), `${langName}/${kind}: no switching rule`);
+    if (lang !== "hindi") assert.ok(/answers or speaks in Hindi or Hinglish.*continue in Hindi for the rest of the call/.test(text), `${langName}/${kind}: (iii) Hindi reply must lead to Hindi for the rest of the call`);
     for (const b of banned) assert.ok(!text.toLowerCase().includes(b.toLowerCase()), `${langName}/${kind}: contains "${b}"`);
     // the address appears only in the booking brief
     assert.equal(text.includes("H-12 Example Street"), kind === "booking", `${langName}/${kind}: address rule`);
